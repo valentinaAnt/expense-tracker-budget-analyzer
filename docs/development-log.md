@@ -179,7 +179,54 @@ design that Claude had proposed and the student had approved earlier).
   *TODO (student): confirm the "SIGINT received, shutting down..." message.*
 - Still on Node v25.8.0 and inside OneDrive (WAL files are written to a synced folder).
 
-**Commit:** pending — planned `feat: SQLite database module with schema, seed data and tests`.
+**Commit:** `c9f4901` — `SQLite database module with schema, seed data and tests` (committed and pushed by the student).
 
 **Evidence to capture:** optional screenshot of the `npm test` output (useful later for the report's
 testing evidence).
+
+---
+
+## Entry 5 — Phase 3b: Expense API, validation and error handling (2026-10-22)
+
+**Module / objective:** FR1 (expense CRUD) and FR6 (server-side validation, status codes, JSON errors).
+
+**Prompt used:** "lets continue"
+
+**Files created / modified:**
+- `src/errors.js` (new) — `AppError`, `ValidationError` (400), `NotFoundError` (404); `apiNotFound` gives unknown
+  `/api` routes a JSON 404; `errorHandler` turns every error into `{ error: { code, message, details? } }`:
+  `INVALID_JSON` (400), `PAYLOAD_TOO_LARGE` (413), and a generic `INTERNAL_ERROR` (500) for unexpected errors,
+  which are logged on the server but never sent to the client.
+- `src/validation.js` (new) — reusable checks: `toCents` (regex parsing of the text, no floating-point maths;
+  > 0, ≤ 1,000,000, ≤ 2 decimals), `isValidDate` (real calendar date, years 2000–2100), `isValidMonth`,
+  `monthRange` (half-open `[YYYY-MM-01, next month-01)` range — the single month rule), `parseId`,
+  `normalizeDescription` (trimmed, 1–200 chars), `isPlainObject`.
+- `src/services/categoryService.js` (new) — `list()`, `exists(id)`; shared by expenses and (later) budgets.
+- `src/services/expenseService.js` (new) — `list({month, categoryId})`, `getById`, `create`, `update`, `remove`.
+  Validates the whole body and collects all field errors; uses prepared statements with `?` / `@name`
+  placeholders; maps rows to the API shape (`amount` in currency units, `categoryName`, camelCase).
+- `src/routes/expenses.js`, `src/routes/categories.js` (new) — thin HTTP layer (201 for create, 204 for delete).
+- `src/app.js` (modified) — wires services and routers, JSON 404 for `/api`, central error handler last.
+- `tests/helpers.js` (modified) — `createTestDatabase()`, `startTestServer()` (real app on a random port with a temp
+  database), `request()` (fetch wrapper; string bodies are sent raw to test malformed JSON).
+- `tests/validation.test.js`, `tests/expenseService.test.js`, `tests/expensesApi.test.js` (new).
+
+**Tests performed by Claude (actual results):**
+- First full run: 48 tests, 48 pass, 0 fail.
+- Gap noticed: database failures were untested. Added an HTTP test that closes the database under a running server:
+  response is `500 {"error":{"code":"INTERNAL_ERROR",…}}`, the real error is logged once, and the server keeps
+  answering. API file: 12/12 pass.
+- **Mutation check** (to confirm the tests can fail): temporarily changed the month filter from
+  `expense_date < end` to `<=`. Result: `✖ filters by month including both month boundaries and nothing outside them`
+  (14 pass, 1 fail). Change reverted.
+- Final run: 49 tests, 11 suites, 49 pass, 0 fail; no temp folders left behind.
+
+**Problems / decisions:**
+- An invalid ID is rejected (400) before the database is queried; on PUT, body validation (400) is checked before
+  existence (404).
+- A nonexistent `categoryId` in a request body is a 400 validation error (bad input), not a 404.
+- A SQL-injection-style description (`Coffee'); DROP TABLE expenses; --`) is stored as plain text — confirmed by test.
+
+**Commit:** pending — planned `feat: expense API with validation and JSON error handling`.
+
+**Evidence to capture:** optional — `npm test` output showing 49 passing tests.

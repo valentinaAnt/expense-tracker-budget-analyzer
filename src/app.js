@@ -1,5 +1,10 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
+import { apiNotFound, errorHandler } from './errors.js';
+import { createCategoriesRouter } from './routes/categories.js';
+import { createExpensesRouter } from './routes/expenses.js';
+import { createCategoryService } from './services/categoryService.js';
+import { createExpenseService } from './services/expenseService.js';
 
 const publicDir = fileURLToPath(new URL('../public', import.meta.url));
 
@@ -8,6 +13,9 @@ const publicDir = fileURLToPath(new URL('../public', import.meta.url));
  * The database is passed in, so tests can supply an isolated temporary database.
  */
 export function createApp(db) {
+  const categoryService = createCategoryService(db);
+  const expenseService = createExpenseService(db, categoryService);
+
   const app = express();
 
   app.disable('x-powered-by');
@@ -18,7 +26,13 @@ export function createApp(db) {
     res.json({ status: 'ok', database: 'ok' });
   });
 
+  app.use('/api/categories', createCategoriesRouter(categoryService));
+  app.use('/api/expenses', createExpensesRouter(expenseService));
+  app.use('/api', apiNotFound);
+
   app.use(express.static(publicDir));
+
+  app.use(errorHandler);
 
   return app;
 }
