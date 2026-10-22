@@ -122,6 +122,47 @@ describe('Expenses API (HTTP)', () => {
     }
   });
 
+  it('stores non-Latin descriptions unchanged, counting characters rather than bytes', async () => {
+    const description = 'Храна от пазара';
+    const created = await call('POST', '/api/expenses', { ...validBody, description });
+    assert.equal(created.status, 201);
+    assert.equal((await call('GET', `/api/expenses/${created.body.id}`)).body.description, description);
+
+    const maxLength = await call('POST', '/api/expenses', { ...validBody, description: 'ж'.repeat(200) });
+    assert.equal(maxLength.status, 201);
+  });
+
+  it('accepts the maximum amount and rejects one cent more', async () => {
+    assert.equal((await call('POST', '/api/expenses', { ...validBody, amount: 1_000_000 })).status, 201);
+    const tooLarge = await call('POST', '/api/expenses', { ...validBody, amount: '1000000.01' });
+    assert.equal(tooLarge.status, 400);
+    assert.equal(tooLarge.body.error.details[0].field, 'amount');
+  });
+
+  it('accepts a leap day only in a leap year', async () => {
+    assert.equal((await call('POST', '/api/expenses', { ...validBody, date: '2028-02-29' })).status, 201);
+    assert.equal((await call('POST', '/api/expenses', { ...validBody, date: '2027-02-29' })).status, 400);
+  });
+
+  it('rejects a body that is not sent as JSON', async () => {
+    const response = await fetch(`${server.baseUrl}/api/expenses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: 'amount=10&categoryId=1',
+    });
+    const body = await response.json();
+    assert.equal(response.status, 400);
+    assert.equal(body.error.details[0].field, 'body');
+  });
+
+  it('ignores fields the client is not allowed to set', async () => {
+    const created = await call('POST', '/api/expenses', { ...validBody, id: 424242, createdAt: '1999-01-01', admin: true });
+    assert.equal(created.status, 201);
+    assert.notEqual(created.body.id, 424242);
+    assert.notEqual(created.body.createdAt, '1999-01-01');
+    assert.equal('admin' in created.body, false);
+  });
+
   it('treats SQL in text fields as plain data', async () => {
     const description = "Coffee'); DROP TABLE expenses; --";
     const created = await call('POST', '/api/expenses', { ...validBody, description });

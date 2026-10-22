@@ -3,8 +3,14 @@ import { createApp } from './app.js';
 import { openDatabase } from './db/database.js';
 
 const HOST = '127.0.0.1';
-const PORT = Number(process.env.PORT) || 3000;
+// PORT=0 is valid (the OS picks a free port), so only a missing or empty PORT falls back to 3000.
+const PORT = Number(process.env.PORT || 3000);
 const DB_PATH = process.env.DB_PATH || fileURLToPath(new URL('../data/expenses.db', import.meta.url));
+
+if (!Number.isInteger(PORT) || PORT < 0 || PORT > 65535) {
+  console.error(`Invalid PORT "${process.env.PORT}": expected a whole number from 0 to 65535`);
+  process.exit(1);
+}
 
 let db;
 try {
@@ -22,7 +28,7 @@ const server = app.listen(PORT, HOST, (error) => {
     db.close();
     process.exit(1);
   }
-  console.log(`Expense Tracker running at http://${HOST}:${PORT}`);
+  console.log(`Expense Tracker running at http://${HOST}:${server.address().port}`);
   console.log(`Database: ${DB_PATH}`);
 });
 

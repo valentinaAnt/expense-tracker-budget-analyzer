@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { openDatabase, DEFAULT_CATEGORIES } from '../src/db/database.js';
 import { createTempDir } from './helpers.js';
@@ -55,6 +55,15 @@ describe('openDatabase', () => {
     const nestedDb = openDatabase(nestedPath);
     nestedDb.close();
     assert.ok(existsSync(nestedPath));
+  });
+
+  it('fails clearly on a corrupt database file and does not keep it locked', () => {
+    const corruptPath = join(temp.dir, 'corrupt.db');
+    writeFileSync(corruptPath, 'this is not a database');
+
+    assert.throws(() => openDatabase(corruptPath), { code: 'SQLITE_NOTADB' });
+    // On Windows an open file handle would make this deletion fail.
+    assert.doesNotThrow(() => rmSync(corruptPath));
   });
 
   it('rejects an expense that references a nonexistent category', () => {

@@ -326,6 +326,74 @@ answered "euro". Phase 4 itself followed the earlier "lets continue" workflow.
 - No automated frontend tests are in the repository; the browser behaviour was verified by the scratch script and must
   also be checked manually by the student. *TODO (student): record your manual browser check.*
 
-**Commit:** pending — planned `feat: browser interface with dashboard, expenses and budgets`.
+**Commit:** `d56a433` — `feat: browser interface with dashboard, expenses and budgets` (committed by the student).
 
-**Evidence to capture:** this is the phase for the report screenshots (see the checklist given in the chat).
+**Evidence to capture:** report screenshots — the student decided to take them at the end of the project.
+
+---
+
+## Entry 8 — GitHub description and LaTeX report template (2026-10-22)
+
+**Objective:** Make the public project description and the report template match the implemented system.
+
+**Prompts used:**
+- "okay, can we change this descriprion in repo so it matches my project?" followed by the GitHub "About" text, which
+  described a Python/Flask application with income tracking.
+- "this is my template that i will use / can you change it so it matches my project?" followed by the student's
+  LaTeX template (also written for Python, Flask, pytest, income and transaction types).
+
+**What was done:**
+- The old description was not in any repository file (checked with a search for "Flask", "Python", "income"); it is the
+  GitHub "About" setting. Claude proposed a corrected description and explained how to change it on GitHub
+  (no GitHub CLI installed). *TODO (student): confirm the description was updated.*
+- `report/main.tex` (new) — the student's template, with its structure kept, filled with verified facts from this
+  log: requirements matching the real scope (no income/balance), architecture diagram (TikZ), technology choices,
+  API table, schema, per-module development process with real test results, prompts quoted verbatim, real challenges,
+  and an honest note that only one AI tool was used. Remaining unknowns are marked `% TODO`. Screenshot figures are
+  commented out until genuine screenshots exist.
+- Not compiled locally (no LaTeX installation); to be compiled in Overleaf with pdfLaTeX.
+
+**Commit:** `b5e89ef` — `docs: adapt LaTeX report template to the implemented project`.
+
+---
+
+## Entry 9 — Phase 5: Coverage-driven test hardening (2026-10-22)
+
+**Module / objective:** FR7 — find and close meaningful test gaps; FR2 persistence across a real server restart.
+
+**Prompts used:** "i will make screenshots at the end of the project. how we can continue now" (Claude proposed the
+remaining plan and ran a coverage report), then "okay go on".
+
+**Coverage before (actual):** 99.29 % lines overall; uncovered: `database.js` 63–65 (closing the connection when
+initialization fails), `errors.js` 41–42 (response already sent); `server.js` not measured because no test started it.
+
+**Files created / modified:**
+- `package.json` — new script `npm run test:coverage`.
+- `src/server.js` — **bug fix:** `Number(process.env.PORT) || 3000` turned `PORT=0` ("any free port") into 3000 and a
+  non-numeric PORT also silently into 3000. Now `Number(process.env.PORT || 3000)` plus validation (integer 0–65535,
+  otherwise a clear message and exit code 1); the start-up message prints the port actually used.
+- `tests/database.test.js` — corrupt database file → `SQLITE_NOTADB`, and the file can be deleted afterwards (not locked).
+- `tests/expensesApi.test.js` — Cyrillic description round trip (and 200 Cyrillic characters accepted), maximum amount
+  1,000,000 accepted / 1,000,000.01 rejected, leap day 2028-02-29 accepted / 2027-02-29 rejected, non-JSON body → 400,
+  client-supplied `id`/`createdAt`/unknown fields ignored.
+- `tests/server.test.js` (new) — starts `node src/server.js` as a real process: health check on a free port;
+  **persistence across a stop and restart of the server process** (expense and budget still present, summary correct);
+  folder given as `DB_PATH` → exit code 1 with "Could not open database"; `PORT=abc` → exit code 1 with a clear message.
+
+**Tests performed by Claude (actual results):**
+- First run: 81 tests, 16 suites, 81 pass, 0 fail.
+- **Mutation check on the PORT fix** (old line restored temporarily) exposed two weaknesses in the new tests: the
+  free-port test still passed (port 3000 happened to be free) and the invalid-PORT test hung, because the buggy server
+  started and never exited. Fixes: assert the port is not 3000; give `runUntilExit` a 10 s limit. With the bug the two
+  tests now fail (`PORT=0 must not fall back to the default port`; the other after 10 s). Fix restored → 81/81 pass.
+- One leftover temp folder was found; its creation time (15:47:37) matched the hung run that had been stopped by force,
+  so its cleanup never ran. Deleted; a new full run left 0 folders.
+- `npm run test:coverage` → all files 96.51 % lines, 96.92 % branches; `database.js` now 100 %.
+  `server.js` shows 46.67 %: lines 22–45 *are* executed (the health check and restart tests pass), but processes ended
+  with `kill()` on Windows do not write coverage data. The SIGINT/SIGTERM shutdown handler is genuinely untested
+  automatically (Windows cannot deliver Ctrl+C to a child process); it remains a manual check.
+  `errors.js` 41–42 (response already sent) left untested deliberately: hard to trigger, low risk.
+
+**Open items:** Node 24 LTS still to install and re-test; student's manual browser and Ctrl+C checks.
+
+**Commit:** pending — planned `test: server process, persistence and edge-case tests; fix PORT=0 handling`.

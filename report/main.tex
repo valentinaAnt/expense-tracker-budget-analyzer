@@ -465,11 +465,17 @@ introduced bugs: changing the month filter from \texttt{<} to
 In both cases exactly the expected test failed; the change was then
 reverted and the full suite passed again.
 
-\textbf{Testing Strategy.} The current suite contains 71 tests in 15
-groups (validation, database, expense, budget, and analytics services,
-and two HTTP test files). The latest run reported 71 passed and 0
-failed in about 0.5 seconds.
-% TODO: update the numbers after Phase 5 and the final test run.
+\textbf{Testing Strategy.} The current suite contains 81 tests in 16
+groups: validation, database, expense, budget, and analytics services,
+two HTTP test files, and tests that start \texttt{src/server.js} as a
+real process, including a check that data survives stopping and
+restarting the server. The latest run reported 81 passed and 0 failed;
+\texttt{npm run test:coverage} reported 96.5\,\% line coverage. A
+coverage report also revealed a real bug: \texttt{PORT=0} silently fell
+back to port 3000. When the fix was undone on purpose, one new test
+still passed and another hung, so both tests were strengthened until
+they failed on the buggy code.
+% TODO: update the numbers after the final test run on Node.js 24 LTS.
 
 \textbf{AI Tool Choice.} Claude executed the tests and reported
 failures instead of claiming success.
@@ -596,7 +602,7 @@ at:
 The completed system lets a user record, edit, and delete expenses, set
 monthly category budgets, and see accurate monthly totals, budget usage,
 and top categories on a responsive dashboard, with all data stored in
-SQLite. Seventy-one automated tests and an automated browser check
+SQLite. Eighty-one automated tests and an automated browser check
 confirmed the main functionality at the time of writing.
 
 The project showed that an AI coding assistant is most effective when
