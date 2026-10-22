@@ -4,9 +4,147 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Expense Tracker &amp; Budget Analyzer</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="module" src="js/app.js"></script>
 </head>
 <body>
-  <h1>Expense Tracker &amp; Budget Analyzer</h1>
-  <p>Setup placeholder. The interface is built in Phase 4.</p>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="app-header">
+    <div class="container header-inner">
+      <h1 class="app-title">Expense Tracker <span>&amp; Budget Analyzer</span></h1>
+      <div class="month-picker">
+        <button type="button" class="btn btn-icon" id="prev-month" aria-label="Previous month">&lsaquo;</button>
+        <label for="month" class="visually-hidden">Month</label>
+        <input type="month" id="month" min="2000-01" max="2100-12" pattern="\d{4}-\d{2}" required>
+        <button type="button" class="btn btn-icon" id="next-month" aria-label="Next month">&rsaquo;</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+
+  <main id="main" class="container" aria-busy="true">
+    <div id="load-error" class="alert" role="alert" hidden>
+      <p id="load-error-message">Could not load data.</p>
+      <button type="button" class="btn" id="retry">Retry</button>
+    </div>
+
+    <section aria-labelledby="summary-heading">
+      <h2 id="summary-heading" class="section-title">Overview for <span class="month-label">…</span></h2>
+      <div class="cards">
+        <article class="card">
+          <h3 class="card-title">Spent</h3>
+          <p class="card-value" id="card-spent">–</p>
+          <p class="card-note" id="card-spent-note"></p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">Monthly budget</h3>
+          <p class="card-value" id="card-budget">–</p>
+          <p class="card-note" id="card-budget-note"></p>
+        </article>
+        <article class="card" id="card-remaining-box">
+          <h3 class="card-title" id="card-remaining-title">Budget left</h3>
+          <p class="card-value" id="card-remaining">–</p>
+          <p class="card-note" id="card-remaining-note"></p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">Over budget</h3>
+          <p class="card-value" id="card-over">–</p>
+          <p class="card-note" id="card-over-note"></p>
+        </article>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <section class="panel" aria-labelledby="chart-heading">
+        <h2 id="chart-heading" class="panel-title">Spending by category</h2>
+        <ul id="category-chart" class="bar-chart"></ul>
+        <p id="chart-empty" class="empty" hidden>No spending or budgets for this month yet.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="top-heading">
+        <h2 id="top-heading" class="panel-title">Top categories</h2>
+        <ol id="top-categories" class="top-list"></ol>
+        <p id="top-empty" class="empty" hidden>No expenses this month.</p>
+      </section>
+    </div>
+
+    <div class="grid-2">
+      <section class="panel" id="expense-form-panel" aria-labelledby="form-heading">
+        <h2 id="form-heading" class="panel-title">Add expense</h2>
+        <form id="expense-form" novalidate>
+          <div class="form-row">
+            <div class="field">
+              <label for="amount">Amount (€)</label>
+              <input id="amount" name="amount" type="number" inputmode="decimal" step="0.01" min="0.01"
+                     max="1000000" required aria-describedby="amount-error">
+              <p class="field-error" id="amount-error"></p>
+            </div>
+            <div class="field">
+              <label for="categoryId">Category</label>
+              <select id="categoryId" name="categoryId" required aria-describedby="categoryId-error">
+                <option value="">Choose…</option>
+              </select>
+              <p class="field-error" id="categoryId-error"></p>
+            </div>
+          </div>
+          <div class="field">
+            <label for="date">Date</label>
+            <input id="date" name="date" type="date" min="2000-01-01" max="2100-12-31" required
+                   aria-describedby="date-error">
+            <p class="field-error" id="date-error"></p>
+          </div>
+          <div class="field">
+            <label for="description">Description</label>
+            <input id="description" name="description" type="text" maxlength="200" required
+                   autocomplete="off" aria-describedby="description-error">
+            <p class="field-error" id="description-error"></p>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="submit-expense">Add expense</button>
+            <button type="button" class="btn" id="cancel-edit" hidden>Cancel</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="budget-heading">
+        <h2 id="budget-heading" class="panel-title">Monthly budgets</h2>
+        <p class="hint">Each budget is a monthly limit that applies to every month.</p>
+        <ul id="budget-list" class="budget-list"></ul>
+      </section>
+    </div>
+
+    <section class="panel" aria-labelledby="expenses-heading">
+      <h2 id="expenses-heading" class="panel-title">Expenses in <span class="month-label">…</span></h2>
+      <p id="expense-loading" class="empty">Loading expenses…</p>
+      <p id="expense-empty" class="empty" hidden>No expenses recorded for this month. Add one with the form above.</p>
+      <div class="table-wrap">
+        <table id="expense-table" class="expense-table" hidden>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Description</th>
+              <th scope="col">Category</th>
+              <th scope="col" class="num">Amount</th>
+              <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="expense-rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <form method="dialog">
+      <h2 id="confirm-title" class="panel-title">Are you sure?</h2>
+      <p id="confirm-message"></p>
+      <div class="form-actions">
+        <button type="submit" value="cancel" class="btn" autofocus>Cancel</button>
+        <button type="submit" value="confirm" class="btn btn-danger" id="confirm-button">Delete</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 </html>

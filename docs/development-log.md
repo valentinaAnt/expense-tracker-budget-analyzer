@@ -276,6 +276,56 @@ or ID; 404 unknown category); `DELETE /api/budgets/:categoryId` (204; 404 if no 
 - Status uses exact cents while `percentUsed` is rounded, so e.g. 79.99 % shows as 80.0 % with status `ok`.
   Accepted as a negligible edge case.
 
-**Commit:** pending — planned `feat: budgets and monthly spending analytics`.
+**Commit:** `41b0c83` — `budgets and monthly spending analytics` (committed and pushed by the student).
 
 **Evidence to capture:** none yet (budgets and analytics become visible in the Phase 4 dashboard).
+
+---
+
+## Entry 7 — Phase 4: Browser interface (2026-10-22)
+
+**Module / objective:** FR5 (responsive interface with dashboard, expense form and list, budgets, CSS chart, loading /
+empty / success / error states), connected to the API from Phases 3b–3c.
+
+**Prompts used:** Claude asked which currency to display (an open question from the Phase 1 plan); the student
+answered "euro". Phase 4 itself followed the earlier "lets continue" workflow.
+
+**Files created / modified:**
+- `public/index.html` (replaced placeholder) — semantic sections with headings, labelled form fields with
+  `aria-describedby` error slots, a `role="status"` live region for messages, a `role="alert"` load-error box with
+  Retry, a `<dialog>` for confirmations, and a skip link.
+- `public/js/api.js` (new) — the only module that calls `fetch`; turns error responses and network failures into one
+  `ApiError` type (`status`, `code`, `message`, `details`).
+- `public/js/app.js` (new) — state (selected month, categories, expenses, edit mode), rendering, events.
+  Euro formatting with `Intl.NumberFormat('en-IE', { currency: 'EUR' })`. All user text is inserted with
+  `textContent`, never `innerHTML` (prevents XSS). Client-side validation mirrors the server rules; server
+  `VALIDATION_ERROR` details are shown under the matching field. A refresh counter discards out-of-date responses
+  when the month is changed quickly. After saving, the view switches to the expense's month.
+- `public/css/styles.css` (new) — colour tokens, cards, CSS bar chart (fill = budget usage; status shown by colour
+  *and* text such as "€10.20 over budget · 103.4% used"; striped bar for categories without a budget), responsive
+  breakpoints at 820 px and 480 px, visible focus outlines.
+
+**Tests performed by Claude (actual results):**
+- Seeded a *scratch* database (outside the project, `DB_PATH`) through the API with 4 budgets and 6 expenses, one
+  description containing `<b>bold?</b>`, and rendered the page in headless Microsoft Edge.
+  Checked by hand against the data: Spent €485.49, budget €570.00, budget left €110.50, Food 63.9 % share;
+  the HTML in the description is shown as plain text.
+- Bug found in that screenshot: "1 categories". Fixed (singular/plural).
+- Interactive check with a scratch script that drives headless Edge through the Chrome DevTools Protocol
+  (not part of the repository): **24/24 checks passed, no console errors or exceptions** — empty-form validation
+  and focus, 3-decimal amount rejected, add (list, cards and message update), edit (form filled, row highlighted,
+  saved), delete with Cancel and with Confirm, invalid budget rejected, budget save/remove updating chart and
+  cards, previous month empty state, simulated network failure showing the error box, Retry recovering.
+- Screenshots at 1280 px and 390 px (mobile) and of the delete dialog inspected: layout adapts, the dialog focuses
+  Cancel by default.
+- `npm test` after the changes → 71/71 pass.
+
+**Notes / limitations:**
+- The month, date and number inputs are drawn by the browser in the operating system's language (Bulgarian on this
+  machine: "октомври 2026 г.", "300,00"); the rest of the interface is English.
+- No automated frontend tests are in the repository; the browser behaviour was verified by the scratch script and must
+  also be checked manually by the student. *TODO (student): record your manual browser check.*
+
+**Commit:** pending — planned `feat: browser interface with dashboard, expenses and budgets`.
+
+**Evidence to capture:** this is the phase for the report screenshots (see the checklist given in the chat).
