@@ -96,6 +96,47 @@ v25.8.0
 - Project still inside OneDrive (move pending).
 - Git identity not configured, so no commit yet.
 
-**Commit:** pending — planned message `chore: project setup with Express and better-sqlite3`.
+**Commit:** `4a856c2` — `chore: project setup with Express and better-sqlite3` (message suggested by Claude,
+commit made by the student; author re-set in Entry 3).
 
 **Evidence to capture:** none required yet (optional: browser at `http://127.0.0.1:3000/api/health`).
+
+---
+
+## Entry 3 — Git and GitHub setup (2026-10-22)
+
+**Objective:** Publish the project to the personal GitHub account `valentinaAnt` with correct commit authorship.
+
+**Prompts used (in order):** "okay, can you reccomandate a commit message first"; the `git push` error output
+(`fatal: No configured push destination`); the repository URL; "i want to work on main branch"; "i have deleted
+the repo and create new one with the same name. i want when i push to NOT USE profile mathQA … push from
+valentinaAnt (my personal profile)"; "i want to push from my personal account: …"; "thats my acount: …".
+
+**What happened (actual):**
+1. Student committed `c376820` locally. `git push` failed: no remote was configured yet.
+2. Claude added the remote `origin`. Claude's terminal could not sign in to GitHub (no interactive prompt), so the
+   student ran `git fetch origin` in the VS Code terminal; it found no branches (empty repository).
+3. Student reported that pushes should come from `valentinaAnt`, not `mathQA`. Diagnosis by Claude:
+   - Git Credential Manager had only `valentinaAnt` stored, but the login is not what GitHub shows on commits.
+   - No Git identity was configured, so Git had derived the author `Valentina Antimova <vantimova@evolution.com>`
+     from the Windows work account. GitHub attributes commits by email, so they would appear under whichever
+     account owns that work email.
+4. Fixes (repository-local only; the work identity for other projects is unchanged):
+   - Remote URL pinned to the account: `https://valentinaAnt@github.com/valentinaAnt/expense-tracker-budget-analyzer.git`.
+   - `git config user.name "Valentina Antimova"` and
+     `git config user.email "126921972+valentinaAnt@users.noreply.github.com"` (GitHub noreply address).
+   - `git commit --amend --reset-author --no-edit` → new commit `4a856c2`, files identical to `c376820`.
+5. A `git push --force-with-lease` was rejected with `stale info`: the repository had been recreated empty again,
+   while the local `origin/main` reference was outdated. `git ls-remote origin` showed no branches;
+   `git fetch --prune origin` removed the stale reference, and a normal `git push -u origin main` succeeded.
+
+**Result:** `git ls-remote origin` → `refs/heads/main` = `4a856c2`. `main` tracks `origin/main`.
+
+**Problems / lessons:** Commit authorship is decided by `user.email`, not by the account that pushes. An outdated
+remote-tracking reference can make a push fail with `stale info`; `git fetch --prune` updates it.
+
+**Security note:** While diagnosing, Claude listed environment variables matching `GIT|GH_|GITHUB`, which
+unintentionally printed an unrelated access token into the session output. It was not written to any project
+file. The student was advised to revoke and replace the token.
+
+**Commit:** this log update.
