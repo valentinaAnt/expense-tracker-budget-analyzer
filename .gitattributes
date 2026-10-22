@@ -1,0 +1,7 @@
+# Store text files with LF line endings in Git and keep LF in the working copy on every OS.
+* text=auto eol=lf
+
+# Binary files used for evidence and the report
+*.png binary
+*.jpg binary
+*.pdf binary

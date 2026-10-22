@@ -139,4 +139,47 @@ remote-tracking reference can make a push fail with `stale info`; `git fetch --p
 unintentionally printed an unrelated access token into the session output. It was not written to any project
 file. The student was advised to revoke and replace the token.
 
-**Commit:** this log update.
+**Commit:** `5e9c2b4` — `docs: log Git identity and GitHub setup`. The student then removed the empty `file.txt`
+(`2f98c4e`). Note: `5e9c2b4`'s subject starts with an invisible byte-order mark, because Windows PowerShell
+added one when the message was piped to `git commit -F -`; future commits use `git commit -m … -m …` instead.
+
+---
+
+## Entry 4 — Phase 3a: Database module (2026-10-22)
+
+**Module / objective:** SQLite connection, repeatable schema initialization, seeded categories, persistence tests.
+
+**Prompt used:** "okay we can continue with the project. everything is committed now" (implementing the Phase 3a
+design that Claude had proposed and the student had approved earlier).
+
+**Files created / modified:**
+- `src/db/database.js` (new) — `openDatabase(filePath)`: creates the parent folder, opens the file with
+  better-sqlite3, enables `foreign_keys` (off by default in SQLite) and WAL journal mode, then runs the schema and
+  seeds 9 categories with `INSERT OR IGNORE` inside one transaction. Re-running it changes nothing. If setup fails,
+  the connection is closed before the error is rethrown. CHECK constraints (amount > 0, `YYYY-MM-DD` shape,
+  description 1–200 chars) and UNIQUE (one budget per category) are a last line of defence behind the service-layer
+  validation coming in Phase 3b.
+- `src/server.js` (modified) — opens `data/expenses.db` (or `DB_PATH`), resolved relative to the project rather than
+  the current folder; passes it to `createApp(db)`; closes server and database on SIGINT/SIGTERM.
+- `src/app.js` (modified) — `createApp(db)`; `/api/health` now runs `SELECT 1` and returns `database: "ok"`.
+- `tests/helpers.js` (new) — `createTempDir()`: a unique folder in the OS temp directory per test, removed afterwards.
+- `tests/database.test.js` (new) — 11 tests.
+- `.gitattributes` (new) — store and check out text files with LF, ending the "LF will be replaced by CRLF" warnings.
+
+**Tests performed by Claude (actual results):**
+- `npm test` → 11 tests, 11 pass, 0 fail (≈250 ms). Covered: tables created; categories seeded in order; foreign keys
+  enabled; repeated initialization without duplicates; missing folder created; foreign-key, CHECK and UNIQUE
+  violations rejected with the expected SQLite error codes; expense and budget still present after close and reopen.
+- No `expense-tracker-test-*` folders left in `%TEMP%` after the run.
+- `npm start` → prints the database path; `GET /api/health` → `{"status":"ok","database":"ok"}`.
+- `data/` now holds `expenses.db`, `expenses.db-wal`, `expenses.db-shm`; `git check-ignore` confirms they are ignored.
+
+**Problems / open items:**
+- Ctrl+C shutdown not yet verified (Claude's background process is stopped by force, not by Ctrl+C) —
+  *TODO (student): confirm the "SIGINT received, shutting down..." message.*
+- Still on Node v25.8.0 and inside OneDrive (WAL files are written to a synced folder).
+
+**Commit:** pending — planned `feat: SQLite database module with schema, seed data and tests`.
+
+**Evidence to capture:** optional screenshot of the `npm test` output (useful later for the report's
+testing evidence).
