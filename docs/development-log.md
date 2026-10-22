@@ -227,6 +227,55 @@ testing evidence).
 - A nonexistent `categoryId` in a request body is a 400 validation error (bad input), not a 404.
 - A SQL-injection-style description (`Coffee'); DROP TABLE expenses; --`) is stored as plain text — confirmed by test.
 
-**Commit:** pending — planned `feat: expense API with validation and JSON error handling`.
+**Commit:** `ff1c148` — `feat: expense API with validation and JSON error handling` (committed and pushed by the student).
 
 **Evidence to capture:** optional — `npm test` output showing 49 passing tests.
+
+---
+
+## Entry 6 — Phase 3c: Budgets and analytics (2026-10-22)
+
+**Module / objective:** FR3 (monthly category budgets) and FR4 (spending analytics), derived only from stored records.
+
+**Prompt used:** "okay lets start with 3c"
+
+**Files created / modified:**
+- `src/services/budgetService.js` (new) — `list()`, `set(categoryId, {monthlyLimit})`, `remove(categoryId)`.
+  `set` is a single `INSERT … ON CONFLICT (category_id) DO UPDATE` (upsert), so a category can never get two budgets.
+  A malformed category ID is a 400; a well-formed but unknown category (part of the URL) is a 404.
+- `src/services/analyticsService.js` (new) — `getMonthlySummary(month)`. One SQL query sums `amount_cents` per
+  category inside the half-open month range from `monthRange()` (same rule as the expense list) and LEFT JOINs the
+  budgets. Rules: remaining = limit − spent (negative = exceeded); percent used rounded to 1 decimal from integer
+  cents; status `ok` < 80 %, `warning` 80 %–100 % inclusive, `over` > 100 %, `no-budget` without a budget; categories
+  with neither spending nor a budget are omitted; top 3 categories with their share of total spending. The default
+  month comes from an injectable clock (`now`), so tests do not depend on the real date.
+- `src/routes/budgets.js`, `src/routes/analytics.js` (new); `src/app.js` (modified) — mounts `/api/budgets` and
+  `/api/analytics`.
+- `tests/budgetService.test.js`, `tests/analyticsService.test.js`, `tests/budgetsAnalyticsApi.test.js` (new).
+
+**New endpoints:** `GET /api/budgets` (200); `PUT /api/budgets/:categoryId` `{monthlyLimit}` (200; 400 invalid limit
+or ID; 404 unknown category); `DELETE /api/budgets/:categoryId` (204; 404 if no budget);
+`GET /api/analytics/summary?month=YYYY-MM` (200; month defaults to the current month; 400 invalid month).
+
+**Tests performed by Claude (actual results):**
+- Analytics tests use a fixed data set with totals calculated by hand beforehand, including two expenses just outside
+  the month (2026-09-30, 2026-11-01): expected total 421.19, budget 530, Food 310.20 / 300 → −10.20, 103.4 %, `over`;
+  Entertainment exactly 80 % → `warning`; Shopping without budget → `no-budget`; top-3 shares 73.6 / 10.7 / 9.5 %.
+  Also: exactly-at-limit, December→January boundary, empty month, invalid months, removal reflected immediately.
+- `npm test` → 71 tests, 15 suites, 71 pass, 0 fail; no temp folders left behind.
+- **Mutation check:** changed `spent > limit` to `spent >= limit` for `over`. Result:
+  `✖ marks spending of exactly the budget as warning with nothing remaining` (8 pass, 1 fail). Reverted; 71/71 pass.
+- Real server smoke test on port 3100 with a scratch database (`DB_PATH`, outside the project): PUT budget 200 for
+  Food, POST expense 175.25 → summary `spent 175.25, remaining 24.75, percentUsed 87.6, status "warning"`.
+
+**Problems / decisions:**
+- `PUT` returns 200 for both create and update, as in the approved plan (201 for a newly created budget was
+  considered but not adopted, to keep the agreed API).
+- `createdAt` / `updatedAt` come from SQLite `datetime('now')` and are therefore UTC (the smoke test showed
+  `12:17:25` at 15:17 local time, UTC+3). The interface does not display them; noted for the report.
+- Status uses exact cents while `percentUsed` is rounded, so e.g. 79.99 % shows as 80.0 % with status `ok`.
+  Accepted as a negligible edge case.
+
+**Commit:** pending — planned `feat: budgets and monthly spending analytics`.
+
+**Evidence to capture:** none yet (budgets and analytics become visible in the Phase 4 dashboard).
