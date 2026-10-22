@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Local SQLite database (never commit real data)
+data/*
+!data/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+
+# Environment and logs
+.env
+*.log
+npm-debug.log*
+
+# LaTeX build output
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.synctex.gz
+report/*.fdb_latexmk
+report/*.fls
+
+# OS files
+Thumbs.db
+.DS_Store
