@@ -785,7 +785,7 @@ example JSON and the security section (these details remain in the report and th
 
 **Verification:** a search of the README for Cyrillic characters finds none.
 
-**Commit:** pending — together with Entry 19.
+**Commit:** `9db5544` / `cb04404` (committed by the student).
 
 ---
 
@@ -803,5 +803,55 @@ category over budget", but the screenshot shows 0 over budget, so the caption wa
 visible. The figures now use `[H]` (`float` package) so each stays under its heading; the student's `\newpage` is
 no longer needed. The test screenshot is shown at 75 % width because it is taller than it is wide. The local
 `main.tex` was updated to match, and the README's Overleaf instructions now say to upload both images.
+
+**Commit:** `cb04404` — `docs: add screenshots to report, fix in README` (committed by the student).
+
+---
+
+## Entry 22 — Dashboard layout reorganised (2026-10-23)
+
+**Prompts used:**
+
+```
+i think that that main page is not too good-locing
+
+not sure
+```
+
+Claude asked whether this meant the report's title page or the app; the student answered "App dashboard", then wrote
+(in Bulgarian) "според мен main page-a на проекта (application) не е добре подредена. можем ли да я направим по добре
+изглеждаша (да подредим малко нещата)" — *in my opinion the project's main page (application) is not well arranged;
+can we make it look better (arrange things a bit)*.
+
+**Problem identified by Claude:** the expense list was at the very bottom, under two long columns; the expense form
+was far from the list it adds to; the category and budget settings were mixed with the daily-use form; the columns
+had very different heights. Claude offered two layouts with mock-ups; the student chose **"По секции"** (sections).
+
+**Changes:**
+
+- `public/index.html` — three titled sections:
+  1. *Overview* — cards, chart and top categories;
+  2. *Expenses* — the add/edit form next to the expense list;
+  3. *Budgets and categories* — the two settings panels side by side.
+
+  Panel headings became `h3` under each section's `h2`. All element IDs are unchanged, so `app.js` needed no changes.
+  The empty-list text no longer says "the form above".
+- `public/css/styles.css`:
+  - `.page-section` with a divider line between sections;
+  - panels in the same row are stretched to equal height;
+  - `.grid-form-list` (form 2/5, list 3/5): the form stays in view (`position: sticky`) while a long list scrolls,
+    except on short or narrow screens;
+  - the unused `.stack` class was removed.
+
+**Verification by Claude (actual results):**
+
+- The scratch headless-Edge script was run against a separate scratch database with sample data (7 October expenses,
+  4 budgets, one category over budget): **37/37 checks passed**. The only browser log entry was the expected 409 from
+  the duplicate-category check.
+- Desktop (1280 px) and mobile (390 px) screenshots were inspected; on mobile the sections stack in the same order.
+- `npm test`: 105/105 pass. The scratch database was deleted afterwards.
+
+**Follow-up for the student:** `report/01-dashboard.png` shows the old layout. Retake it and replace it in the repo
+and in Overleaf.
 
 **Commit:** pending.

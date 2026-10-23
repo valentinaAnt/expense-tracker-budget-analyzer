@@ -41,7 +41,7 @@
       <button type="button" class="btn" id="retry">Retry</button>
     </div>
 
-    <section aria-labelledby="summary-heading">
+    <section class="page-section" aria-labelledby="summary-heading">
       <div class="page-heading">
         <h2 id="summary-heading" class="section-title">Overview for <span class="month-label">…</span></h2>
         <p class="section-subtitle">All figures are calculated from your recorded expenses and budgets.</p>
@@ -88,33 +88,38 @@
           <p class="card-note" id="card-over-note"></p>
         </article>
       </div>
+
+      <div class="grid-2 grid-wide-left">
+        <section class="panel" aria-labelledby="chart-heading">
+          <div class="panel-header">
+            <h3 id="chart-heading" class="panel-title">Spending by category</h3>
+            <p class="panel-subtitle">Each bar shows how much of the monthly budget is used.</p>
+          </div>
+          <ul id="category-chart" class="bar-chart"></ul>
+          <p id="chart-empty" class="empty" hidden>No spending or budgets for this month yet.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="top-heading">
+          <div class="panel-header">
+            <h3 id="top-heading" class="panel-title">Top categories</h3>
+            <p class="panel-subtitle">Where most of this month's money went.</p>
+          </div>
+          <ol id="top-categories" class="top-list"></ol>
+          <p id="top-empty" class="empty" hidden>No expenses this month.</p>
+        </section>
+      </div>
     </section>
 
-    <div class="grid-2 grid-wide-left">
-      <section class="panel" aria-labelledby="chart-heading">
-        <div class="panel-header">
-          <h2 id="chart-heading" class="panel-title">Spending by category</h2>
-          <p class="panel-subtitle">Each bar shows how much of the monthly budget is used.</p>
-        </div>
-        <ul id="category-chart" class="bar-chart"></ul>
-        <p id="chart-empty" class="empty" hidden>No spending or budgets for this month yet.</p>
-      </section>
+    <section class="page-section" aria-labelledby="expenses-section-heading">
+      <div class="page-heading">
+        <h2 id="expenses-section-heading" class="section-title">Expenses</h2>
+        <p class="section-subtitle">Record what you spend, and edit or delete past entries.</p>
+      </div>
 
-      <section class="panel" aria-labelledby="top-heading">
-        <div class="panel-header">
-          <h2 id="top-heading" class="panel-title">Top categories</h2>
-          <p class="panel-subtitle">Where most of this month's money went.</p>
-        </div>
-        <ol id="top-categories" class="top-list"></ol>
-        <p id="top-empty" class="empty" hidden>No expenses this month.</p>
-      </section>
-    </div>
-
-    <div class="grid-2">
-      <div class="stack">
+      <div class="grid-2 grid-form-list">
         <section class="panel" id="expense-form-panel" aria-labelledby="form-heading">
           <div class="panel-header">
-            <h2 id="form-heading" class="panel-title">Add expense</h2>
+            <h3 id="form-heading" class="panel-title">Add expense</h3>
             <p class="panel-subtitle">Amounts are in euros.</p>
           </div>
           <form id="expense-form" novalidate>
@@ -155,9 +160,49 @@
           </form>
         </section>
 
+        <section class="panel" aria-labelledby="expenses-heading">
+          <div class="panel-header">
+            <h3 id="expenses-heading" class="panel-title">Expenses in <span class="month-label">…</span></h3>
+            <p class="panel-subtitle">Newest first.</p>
+          </div>
+          <p id="expense-loading" class="empty">Loading expenses…</p>
+          <p id="expense-empty" class="empty" hidden>No expenses recorded for this month yet.</p>
+          <div class="table-wrap">
+            <table id="expense-table" class="expense-table" hidden>
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Category</th>
+                  <th scope="col" class="num">Amount</th>
+                  <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody id="expense-rows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="page-section" aria-labelledby="settings-heading">
+      <div class="page-heading">
+        <h2 id="settings-heading" class="section-title">Budgets and categories</h2>
+        <p class="section-subtitle">Settings that apply to every month.</p>
+      </div>
+
+      <div class="grid-2">
+        <section class="panel" aria-labelledby="budget-heading">
+          <div class="panel-header">
+            <h3 id="budget-heading" class="panel-title">Monthly budgets</h3>
+            <p class="panel-subtitle">Each budget is a monthly limit that applies to every month.</p>
+          </div>
+          <ul id="budget-list" class="budget-list"></ul>
+        </section>
+
         <section class="panel" aria-labelledby="categories-heading">
           <div class="panel-header">
-            <h2 id="categories-heading" class="panel-title">Categories</h2>
+            <h3 id="categories-heading" class="panel-title">Categories</h3>
             <p class="panel-subtitle">Add your own, rename them, or delete ones you no longer use.</p>
           </div>
           <form id="category-form" class="category-add" novalidate>
@@ -169,37 +214,6 @@
           </form>
           <ul id="category-list" class="category-list"></ul>
         </section>
-      </div>
-
-      <section class="panel" aria-labelledby="budget-heading">
-        <div class="panel-header">
-          <h2 id="budget-heading" class="panel-title">Monthly budgets</h2>
-          <p class="panel-subtitle">Each budget is a monthly limit that applies to every month.</p>
-        </div>
-        <ul id="budget-list" class="budget-list"></ul>
-      </section>
-    </div>
-
-    <section class="panel" aria-labelledby="expenses-heading">
-      <div class="panel-header">
-        <h2 id="expenses-heading" class="panel-title">Expenses in <span class="month-label">…</span></h2>
-        <p class="panel-subtitle">Newest first.</p>
-      </div>
-      <p id="expense-loading" class="empty">Loading expenses…</p>
-      <p id="expense-empty" class="empty" hidden>No expenses recorded for this month. Add one with the form above.</p>
-      <div class="table-wrap">
-        <table id="expense-table" class="expense-table" hidden>
-          <thead>
-            <tr>
-              <th scope="col">Date</th>
-              <th scope="col">Description</th>
-              <th scope="col">Category</th>
-              <th scope="col" class="num">Amount</th>
-              <th scope="col"><span class="visually-hidden">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody id="expense-rows"></tbody>
-        </table>
       </div>
     </section>
   </main>
