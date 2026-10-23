@@ -692,7 +692,7 @@ checked the structure of `main.tex`: braces balanced, all `\begin`/`\end` enviro
 remain for the student (own code review, own manual browser check, final numbers, final conclusion review).
 *TODO (student): compile in Overleaf and record the page count and any warnings.*
 
-**Commit:** pending — planned `docs: update README and report; add LaTeX/Overleaf instructions`.
+**Commit:** `f43fede` — `docs: update README and report; add LaTeX/Overleaf instructions`.
 
 ---
 
@@ -717,4 +717,51 @@ the module text and remain recorded verbatim in this log. A sentence in the intr
 **Verification:** every quoted sentence was copied from the brief; the scratch structure check of `main.tex` still
 reports balanced braces and matched environments.
 
-**Commit:** pending — together with Entry 17.
+**Commit:** `e0e9d3f` — same message as Entry 17 (committed and pushed by the student).
+
+---
+
+## Entry 19 — Final verification and completed report (2026-10-23)
+
+**Prompt used:**
+
+```
+i want you to make the documantation. i will onnnly fill the screenshots later
+```
+
+**Final verification by Claude (actual results, Phase 8):**
+
+- Project folder, Node.js v24.22.1, npm 11.19.1: `npm run test:coverage` → **105 tests, 22 suites, 105 pass, 0 fail**;
+  coverage **97.01 % lines, 96.51 % branches, 97.50 % functions** (uncovered: `server.js` lines 22–45, the shutdown
+  handler; `errors.js` lines 49–50).
+- Clean copy: `git clone https://github.com/valentinaAnt/expense-tracker-budget-analyzer.git` **failed** with
+  "Repository not found" (an anonymous clone; `git ls-remote origin` then asked for a password, so the GitHub
+  repository is **private**). Because the clone failed, the next commands ran in the project folder instead
+  (`npm ci` reinstalled the same locked versions; tests 105/105) — no files were changed.
+- Clean copy of the committed state instead: `git clone .` into the session scratch folder (the clone contained only
+  `data/.gitkeep`, no database) → `npm ci`: 0 vulnerabilities; `npm test`: 105/105 pass; `PORT=3187 node src/server.js`
+  printed `Expense Tracker running at http://127.0.0.1:3187`; `/api/health` → `{"status":"ok","database":"ok"}`;
+  `/api/categories` → the nine default categories; `GET /` → 200. Local `main` was in sync with `origin/main`.
+
+**`report/main.tex` changes:**
+
+- The four `% TODO` comments were replaced with verified content:
+  - a "Human review" paragraph based on this log (approvals, the `/api/health` check, the rejected redesign and
+    prompts, the student's decisions);
+  - the student's re-check after the two usability fixes;
+  - the final test numbers and the clean-copy verification;
+  - an updated conclusion.
+- Shortened from about 3,800 to about 3,100 words, because the estimate (no compiler available) was 8–9 pages,
+  above the required 3–6. All sections, facts and the 11 verbatim prompts are kept.
+- Screenshot comments now say exactly what to uncomment.
+- Structure check: braces balanced, environments matched, 0 TODOs.
+
+**Open items for the student:**
+
+- *TODO (student):* add the two screenshots;
+- *TODO (student):* compile in Overleaf and note the page count;
+- *TODO (student):* make the GitHub repository public, or give the examiner access, so that the repository URL in
+  the report works;
+- *TODO (student):* confirm whether a PDF or a Google Docs document is required.
+
+**Commit:** pending.
