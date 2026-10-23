@@ -396,4 +396,50 @@ initialization fails), `errors.js` 41–42 (response already sent); `server.js` 
 
 **Open items:** Node 24 LTS still to install and re-test; student's manual browser and Ctrl+C checks.
 
-**Commit:** pending — planned `test: server process, persistence and edge-case tests; fix PORT=0 handling`.
+**Commit:** `9e06931` — `test: server process, persistence and edge-case tests; fix PORT=0 handling`.
+
+---
+
+## Entry 10 — Switching to Node.js 24 LTS (2026-10-22 / 2026-10-23)
+
+**Objective:** Meet the requirement "a currently supported Node.js LTS release" (development had used Node 25.8.0).
+
+**Prompts used:** the student pasted terminal output at each step (winget install output, `node` not recognized,
+`node --version` → `v24.22.1`, the nvm settings error, and the final `nvm use` output).
+
+**What happened (actual):**
+1. Claude recommended `winget install OpenJS.NodeJS.LTS` **without first checking how Node was installed** — a mistake.
+   winget reported success, but afterwards `node` was not found: `C:\Program Files\nodejs` contained no `node.exe`,
+   although Windows Installer logged "Installation completed successfully" (event 11707, status 0) and no antivirus
+   detection was found.
+2. After the student ran `winget repair`, `node --version` showed v24.22.1, but `npm ci` crashed with
+   `TypeError: Class extends value undefined is not a constructor or null`. The npm log showed files loaded from
+   `AppData\Roaming\nvm\v25.8.0\...`, revealing the real setup: Node is managed by **nvm-windows**, and
+   `C:\Program Files\nodejs` is a symbolic link to `AppData\Roaming\nvm\v25.8.0`. The MSI installer had written Node 24
+   *through the link into the Node 25 folder*, leaving `node.exe` v24 next to a mixed npm 11.11/11.19 installation
+   (and the student's work package `@backend`).
+3. Fix via nvm: `nvm install 24.22.1` first failed with `open C:\Users\vantimova\AppData\Local\nvm\settings.txt`.
+   Cause: user-level environment variables (`NVM_HOME=AppData\Local\nvm`, `NVM_SYMLINK=AppData\Roaming\nvm`)
+   overrode the correct machine-level ones (`AppData\Roaming\nvm`, `C:\Program Files\nodejs`). The student removed the
+   user-level values; `nvm use 24.22.1` then pointed the link to a clean `AppData\Roaming\nvm\v24.22.1`.
+4. `npm ci` on Node 24 / npm 11.19.1 then ran `node-gyp rebuild` for better-sqlite3 and failed (no usable Python).
+   Investigation (Claude unpacked the package): better-sqlite3 13.0.3 ships prebuilt Node-API binaries
+   (`prebuilds/win32-x64.node`, etc.) and declares `"gypfile": false`, and the lockfile records no install script,
+   but npm 11.19.1 still ran node-gyp because the package contains `binding.gyp`. Under Node 25 / npm 11.11 the same
+   lockfile had installed without compiling. Whether this is an npm bug was not established.
+5. `npm ci --ignore-scripts` installed in 1 s and better-sqlite3 loaded (SQLite 3.53.4) using the bundled binary.
+   To make the normal setup commands work for everyone, a project `.npmrc` with `ignore-scripts=true` was added
+   (npm still runs `npm start` / `npm test`; only dependency install scripts are skipped, which is also safer).
+
+**Files created / modified:** `.npmrc` (new); `report/main.tex` (Node.js version, testing numbers, challenge).
+
+**Tests performed by Claude on Node 24.22.1 / npm 11.19.1 (actual results):**
+- Deleted `node_modules`, plain `npm ci` → 67 packages, 0 vulnerabilities, exit 0.
+- `npm test` → 81 tests, 16 suites, 81 pass, 0 fail; no temp folders left.
+- `npm run test:coverage` → unchanged: 96.51 % lines, 96.92 % branches.
+
+**Notes for the student:** don't install or upgrade Node with winget on this machine (the stale MSI entry would delete
+files through the nvm link). The damaged `v25.8.0` folder is no longer active; to restore the work tools:
+`nvm uninstall 25.8.0`, `nvm install 25.8.0`, reinstall `@backend`, and switch with `nvm use`.
+
+**Commit:** pending — planned `chore: support Node.js 24 LTS clean installs via .npmrc`.
