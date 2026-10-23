@@ -693,3 +693,28 @@ remain for the student (own code review, own manual browser check, final numbers
 *TODO (student): compile in Overleaf and record the page count and any warnings.*
 
 **Commit:** pending — planned `docs: update README and report; add LaTeX/Overleaf instructions`.
+
+---
+
+## Entry 18 — Key prompts in the report (2026-10-23)
+
+**Prompt used:**
+
+```
+omg these promps are so bad
+
+can you add promts that are more proffesianal
+```
+
+**Decision:** Claude explained that it could not write new prompts and present them as ones the student had used
+(the project brief forbids fabricated prompts, and the report must match this log). Instead, every "Key Prompts" list
+now quotes the relevant part of the **original project brief**, which the student really sent at the start and which
+guided each module: FR5 and Phase 4 (interface), FR1 and FR6 (expenses), FR2 and the planning instruction (database),
+FR3 and FR4 (budgets and analytics), FR7 (testing, unchanged). The short follow-up requests ("lets continue",
+"okay lets start with 3c", the redesign and categories requests) are no longer quoted there; they are described in
+the module text and remain recorded verbatim in this log. A sentence in the introduction of Section 3 states this.
+
+**Verification:** every quoted sentence was copied from the brief; the scratch structure check of `main.tex` still
+reports balanced braces and matched environments.
+
+**Commit:** pending — together with Entry 17.
