@@ -442,4 +442,28 @@ initialization fails), `errors.js` 41–42 (response already sent); `server.js` 
 files through the nvm link). The damaged `v25.8.0` folder is no longer active; to restore the work tools:
 `nvm uninstall 25.8.0`, `nvm install 25.8.0`, reinstall `@backend`, and switch with `nvm use`.
 
-**Commit:** pending — planned `chore: support Node.js 24 LTS clean installs via .npmrc`.
+**Commit:** `17f809d` — `chore: support Node.js 24 LTS clean installs via .npmrc`.
+
+---
+
+## Entry 11 — Phase 6: README (2026-10-23)
+
+**Objective:** Setup, execution, API overview and testing documentation for users and examiners.
+
+**Prompt used:** "okay, how can we continuue with the project?" (Claude listed the remaining steps and started the README).
+
+**Files created:** `README.md` — features, requirements (Node.js 24 LTS), getting started (`git clone`, `npm ci`,
+`npm start`), scripts, `PORT`/`DB_PATH` configuration, where data is stored and how to reset it, calculation rules
+(month rule, remaining budget, status thresholds, top categories), API table with validation rules and the error
+format, a PowerShell example with its real response, testing, project structure, troubleshooting (execution
+policy, port in use, node-gyp/.npmrc, invalid database path, load error) and security notes.
+
+**Verification by Claude (actual results):**
+- Ran the README's example commands (port changed to 3100, scratch database outside the project): the summary
+  response, the `VALIDATION_ERROR` example and the budget fields match the README exactly.
+- Error messages quoted in the troubleshooting table were compared with the source code.
+- Corrected one unverified claim before committing: the browser requirement originally listed Edge, Chrome and
+  Firefox, but only Microsoft Edge was tested; changed to "tested with Microsoft Edge".
+- The "fresh clone" instructions themselves are verified in Phase 8 (final verification).
+
+**Commit:** pending — planned `docs: add README with setup, API, testing and troubleshooting`.
