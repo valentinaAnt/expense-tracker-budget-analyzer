@@ -621,7 +621,7 @@ even after the user carried on typing elsewhere. Input was not actually blocked,
 → error shown; one Backspace → error cleared immediately; emptied Food budget + Save → the new explanatory message.
 Full browser check 34/34; `npm test` 105/105.
 
-**Commit:** pending — together with Entries 12–14 and 16.
+**Commit:** `b3c7548` — together with Entries 12–14 and 16.
 
 ---
 
@@ -649,4 +649,47 @@ date to today, remove error messages, return to add mode and put the cursor back
 was unchanged, and focus was on Amount. Two existing steps were updated to check the button text instead of the old
 hidden button. Result: 37/37 checks passed; `npm test` 105/105. Screenshot inspected: Clear sits next to Add expense.
 
-**Commit:** pending — planned `feat: custom categories, blue-grey redesign, Clear button; fix lingering budget errors`.
+**Commit:** `b3c7548` — `custom categories, blue-grey redesign, Clear button; fix lingering budget errors`
+(committed and pushed by the student, together with Entries 12–15).
+
+---
+
+## Entry 17 — README and report brought up to date (2026-10-23)
+
+**Prompts used:**
+
+```
+can we make readMe and report/main.tex accurate to the project?
+
+also in readMe, can you add in the doculentation there is tex file that can be compiled in latex (overleaf)
+```
+
+(sent while Claude was still working on the categories feature; the student then wrote "stop", asked about the budget
+error and the Clear button first, and confirmed "it looks great now" before this step was carried out).
+
+**Current numbers measured first (actual):** `npm run test:coverage` → 105 tests, 22 suites, 105 pass, 0 fail;
+97.01 % lines, 96.51 % branches.
+
+**`README.md` changes:** features (custom categories, Clear/Cancel, errors that disappear when corrected, neutral
+design); data reset wording (defaults are created with a new database); category rules (1–40 characters, unique ignoring
+case incl. Cyrillic, rename keeps expenses and budget, used categories cannot be deleted, deleted defaults stay deleted);
+API table with `POST/PUT/DELETE /api/categories` and `expenseCount`; `CONFLICT` (409) error code; testing section
+(105 tests, ~97 % coverage, 37-step browser script); project structure; a troubleshooting row for deleting a used
+category; and a new **Documentation** section listing the README, the development log and the report, with
+**instructions for compiling `report/main.tex` in Overleaf (pdfLaTeX) or locally with `pdflatex`**.
+
+**`report/main.tex` changes:** requirement 2 now describes user-managed categories instead of "nine fixed categories";
+usability requirement mentions clearing the form and errors disappearing; diagram lists the categories routes; UI,
+database and API sections describe the categories panel, once-only seeding with `user_version`, the case-insensitive
+index and the 409 responses; the UI testing text reports the final 37-step browser check and the two usability problems
+the student found; the categories prompt replaces a weaker database prompt; testing numbers updated to 105 tests,
+22 groups, 97.0 % coverage and two more mutation checks; a new challenge ("Problems only a person noticed", including
+Claude's own `aria-invalid` bug); a new limitation (the rejected first redesign); "user-defined categories" and
+"dark theme" removed from future improvements (one is built, the other was rejected); conclusion updated.
+
+**Verification by Claude:** LaTeX still cannot be compiled on this computer (no TeX installation). A scratch script
+checked the structure of `main.tex`: braces balanced, all `\begin`/`\end` environments matched. Four `% TODO` comments
+remain for the student (own code review, own manual browser check, final numbers, final conclusion review).
+*TODO (student): compile in Overleaf and record the page count and any warnings.*
+
+**Commit:** pending — planned `docs: update README and report; add LaTeX/Overleaf instructions`.

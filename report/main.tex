@@ -119,11 +119,13 @@ incrementally with Claude Code as the AI coding assistant.
     confirmation). Each expense has an amount, category, date, and
     description.
 
-    \item \textbf{Categorization and Filtering:}
-    Every expense belongs to one of nine fixed categories (Food,
+    \item \textbf{Categories and Filtering:}
+    Every expense belongs to one category. Nine default categories (Food,
     Transport, Housing, Utilities, Health, Entertainment, Shopping,
-    Education, Other). Expenses can be filtered by month (interface and
-    API) and by category (API).
+    Education, Other) are created with a new database; users can add their
+    own, rename them, and delete categories that are no longer used.
+    Expenses can be filtered by month (interface and API) and by category
+    (API).
 
     \item \textbf{Financial Dashboard:}
     For a selected month the dashboard shows total spending, the total
@@ -151,6 +153,8 @@ incrementally with Claude Code as the AI coding assistant.
     \item \textbf{Usability:} The interface is responsive (desktop and
     mobile widths), uses labelled form fields, keyboard-accessible
     controls, and announces success and error messages to screen readers.
+    Error messages disappear as soon as a field is corrected, and a
+    half-filled expense form can be cleared.
 
     \item \textbf{Reliability:} Money is stored as integer cents, so
     totals are exact. Invalid data is rejected on the server with
@@ -204,7 +208,7 @@ database.
     arrow/.style={-{Stealth}, thick},
     dashedarrow/.style={-{Stealth}, dashed}]
     \node[box] (ui) {Browser UI\\\footnotesize\texttt{index.html}, \texttt{app.js}, \texttt{api.js}};
-    \node[box, right=0.9cm of ui] (routes) {Express routes\\\footnotesize expenses, budgets, analytics};
+    \node[box, right=0.9cm of ui] (routes) {Express routes\\\footnotesize expenses, categories, budgets, analytics};
     \node[box, right=0.9cm of routes] (services) {Services\\\footnotesize validation, rules, SQL};
     \node[box, right=0.9cm of services] (db) {SQLite\\\footnotesize\texttt{data/expenses.db}};
     \node[box, below=0.7cm of routes, xshift=1.9cm, text width=5.5cm] (tests)
@@ -232,13 +236,15 @@ The project targets Node.js~24 LTS; the final tests ran on Node.js
 \subsection{User Interface Module}
 
 \texttt{public/index.html} contains one page with summary cards, a
-category bar chart, a top-categories list, the expense form, the budget
-list, and the expense table for the selected month. \texttt{api.js} is
-the only module that calls \texttt{fetch} and converts error responses
-into one \texttt{ApiError} type; \texttt{app.js} renders data, handles
-events, and formats amounts as euros (\texttt{Intl.NumberFormat}). A
+category bar chart, a top-categories list, the expense form (with
+\emph{Clear}/\emph{Cancel}), a categories panel, the budget list, and the
+expense table for the selected month. \texttt{api.js} is the only module
+that calls \texttt{fetch} and converts error responses into one
+\texttt{ApiError} type; \texttt{app.js} renders data, handles events, and
+formats amounts as euros (\texttt{Intl.NumberFormat}). A
 \texttt{<dialog>} confirms deletions, and a month picker drives every
-section.
+section. The neutral blue-grey design uses colour only for budget
+warnings.
 
 \subsection{Expense Management Module}
 
@@ -261,26 +267,32 @@ months use \texttt{YYYY-MM}, and IDs must be positive integers.
 \texttt{GET /api/expenses} & List, newest first; optional \texttt{month} and \texttt{categoryId} filters (200; 400 invalid filter) \\
 \texttt{POST /api/expenses} & Create (201); 400 \texttt{VALIDATION\_ERROR} or \texttt{INVALID\_JSON}, 413 body too large \\
 \texttt{GET, PUT, DELETE /api/expenses/:id} & Read (200), update (200), delete (204); 400 invalid data or ID, 404 unknown \\
+\texttt{GET, POST /api/categories} & List with expense counts (200), create (201); 400 invalid name, 409 duplicate \\
+\texttt{PUT, DELETE /api/categories/:id} & Rename (200), delete with its budget (204); 404 unknown, 409 duplicate name or still used by expenses \\
 \texttt{GET /api/budgets} & List all budgets (200) \\
 \texttt{PUT, DELETE /api/budgets/:categoryId} & Set or replace (200), remove (204); 400 invalid, 404 unknown \\
 \texttt{GET /api/analytics/summary} & Summary for \texttt{month} (default: current month); 400 invalid month \\
 \bottomrule
 \end{tabularx}
-\caption{Main API endpoints. Errors use the format \texttt{\{"error": \{code, message, details\}\}}; unexpected errors return a generic 500.}
+\caption{Main API endpoints. Errors use the format \texttt{\{"error": \{code, message, details\}\}} with codes such as \texttt{VALIDATION\_ERROR}, \texttt{NOT\_FOUND} and \texttt{CONFLICT}; unexpected errors return a generic 500.}
 \label{tab:api}
 \end{table}
 
 \subsection{Database Module}
 
 \texttt{database.js} opens the SQLite file, enables foreign keys, and
-creates three tables: \texttt{categories} (seeded), \texttt{expenses}
+creates three tables: \texttt{categories}, \texttt{expenses}
 (\texttt{amount\_cents}, \texttt{category\_id}, \texttt{expense\_date},
 \texttt{description}, timestamps), and \texttt{budgets} (one row per
 category through a \texttt{UNIQUE} constraint). \texttt{CREATE TABLE IF
-NOT EXISTS} and \texttt{INSERT OR IGNORE} make initialization
-repeatable. \texttt{CHECK} constraints (positive amount, date format,
-description length) act as a last line of defence behind the service
-validation.
+NOT EXISTS} makes initialization repeatable; the default categories are
+inserted only once, tracked with SQLite's \texttt{user\_version}, so
+categories deleted by the user are not recreated. A case-insensitive
+unique index on category names and \texttt{CHECK} constraints (positive
+amount, date format, description length) act as a last line of defence
+behind the service validation. \texttt{categoryService.js} compares names
+case-insensitively (also for Cyrillic) and refuses to delete a category
+while expenses still use it.
 
 \subsection{Budget Management and Analytics Module}
 
@@ -343,10 +355,15 @@ reserved for budget warnings.
 \textbf{Testing Strategy.} Claude wrote a temporary script (not part of
 the repository) that controlled headless Edge and used the real
 interface: validation, adding, editing, deleting with cancel and
-confirm, budgets, month navigation, and a simulated network failure.
-All 24 checks passed without console errors. A description containing
-\texttt{<b>bold?</b>} was displayed as plain text, confirming the XSS
-protection.
+confirm, budgets, categories, month navigation, and a simulated network
+failure. It grew from 24 to 37 steps as features were added; the final
+run passed all 37. A description containing \texttt{<b>bold?</b>} was
+displayed as plain text, confirming the XSS protection. The student's
+own testing found two usability problems that the script had missed: an
+error message that never disappeared after clicking \emph{Save} on an
+empty budget, and no way to discard a half-filled expense. Claude
+reproduced the first with real mouse events, fixed both, and added them
+to the script.
 % TODO: describe your own manual browser check.
 
 \textbf{AI Tool Choice.} Claude could check the visible result itself
@@ -404,14 +421,20 @@ identifiers.
 stage and approved by the student. Claude then implemented
 \texttt{openDatabase()}, changed the server to open the database and pass
 it to \texttt{createApp(db)}, and added a test helper that creates a
-temporary database folder for every test.
+temporary database folder for every test. Later the student asked how a
+user could add a missing category. Claude listed the design questions
+(duplicates, deleting used categories, defaults reappearing on restart)
+and offered three options; the student chose full add/rename/delete,
+which led to the once-only seeding described in Section~2.
 
 \textbf{Testing Strategy.} Eleven tests check that the tables and
 categories are created, that repeated initialization creates no
 duplicates, that foreign key, \texttt{CHECK}, and \texttt{UNIQUE}
 violations are rejected, and that an expense and a budget are still
 present after the database is closed and reopened (persistence). All
-eleven passed, and no temporary folders were left behind.
+eleven passed, and no temporary folders were left behind. The category
+work added tests showing that deleted defaults stay deleted and that the
+student's existing database upgrades without duplicate categories.
 
 \textbf{AI Tool Choice.} Claude confirmed, using \texttt{git check-ignore},
 that the database files are excluded from Git.
@@ -420,7 +443,7 @@ that the database files are excluded from Git.
 
 \begin{itemize}
     \item Prompt 1 (project brief, final instruction): \prompt{For your first response, do not generate application code. Provide: \ldots{} 4. A database schema proposal. 5. An API endpoint plan. \ldots{} Identify assumptions and wait for my approval before implementation.}
-    \item Prompt 2: \prompt{okay we can continue with the project. everything is committed now}
+    \item Prompt 2: \prompt{what if someone wants to adjust these categories / for example they want a category that we dont provide here??}
 \end{itemize}
 
 \subsection{Budget and Analytics Development}
@@ -465,16 +488,18 @@ temporary databases, and the HTTP tests run the real application.
 \textbf{AI-Assisted Workflow.} Tests were written together with each
 module. To check that the tests can detect mistakes, Claude deliberately
 introduced bugs: changing the month filter from \texttt{<} to
-\texttt{<=}, and marking spending equal to the budget as \emph{over}.
-In both cases exactly the expected test failed; the change was then
-reverted and the full suite passed again.
+\texttt{<=}, marking spending equal to the budget as \emph{over},
+comparing category names case-sensitively, and re-adding the default
+categories on every start. In each case the expected tests failed; the
+change was then reverted and the full suite passed again.
 
-\textbf{Testing Strategy.} The current suite contains 81 tests in 16
-groups: validation, database, expense, budget, and analytics services,
-two HTTP test files, and tests that start \texttt{src/server.js} as a
-real process, including a check that data survives stopping and
-restarting the server. The latest run reported 81 passed and 0 failed;
-\texttt{npm run test:coverage} reported 96.5\,\% line coverage. A
+\textbf{Testing Strategy.} The current suite contains 105 tests in 22
+groups: validation, database, expense, category, budget, and analytics
+services, three HTTP test files, and tests that start
+\texttt{src/server.js} as a real process, including a check that data
+survives stopping and restarting the server. The latest run reported 105
+passed and 0 failed; \texttt{npm run test:coverage} reported 97.0\,\%
+line coverage. A
 coverage report also revealed a real bug: \texttt{PORT=0} silently fell
 back to port 3000. When the fix was undone on purpose, one new test
 still passed and another hung, so both tests were strengthened until
@@ -524,6 +549,12 @@ failures instead of claiming success.
     install then tried to compile better-sqlite3, although the package
     ships prebuilt binaries; a project \texttt{.npmrc} with
     \texttt{ignore-scripts=true} fixed this for every future setup.
+    \item \textbf{Problems only a person noticed:} the automated checks
+    passed, yet the student found a lingering error message and a
+    missing way to clear the expense form. While fixing them, Claude also
+    found its own accessibility bug: invalid budget fields were marked
+    with an empty \texttt{aria-invalid} attribute, which screen readers
+    ignore.
     \item \textbf{Calculation accuracy:} floating-point money and month
     boundaries were addressed by integer cents, a single half-open month
     rule, and boundary tests.
@@ -540,8 +571,9 @@ Its limitations were also visible: a suggested PowerShell command for
 multi-line commit messages did not work, and a later piped commit
 message introduced an invisible byte-order mark, both caused by Windows
 PowerShell behaviour that Claude had not anticipated. Some diagnostic
-commands also printed more information than necessary. Every result
-therefore still had to be checked.
+commands also printed more information than necessary, and its first
+redesign (warm grey with a dark mode) did not match the student's taste.
+Every result therefore still had to be checked and directed.
 
 \subsection{Most Helpful AI Tool}
 
@@ -554,10 +586,10 @@ status.
 
 \subsection{Possible Improvements}
 
-Future versions could add income tracking and a balance, user-defined
-categories, budgets that differ per month, multi-month trend charts, CSV
-export, automated browser tests included in the repository, and a
-dark theme.
+Future versions could add income tracking and a balance, budgets that
+differ per month, moving expenses to another category when deleting
+one, multi-month trend charts, CSV export, and automated browser tests
+included in the repository.
 
 % ==================================================
 % 5. WORKING SYSTEM EVIDENCE
@@ -614,11 +646,12 @@ at:
 \subsection{Conclusion}
 
 % TODO: review and update after the final verification.
-The completed system lets a user record, edit, and delete expenses, set
-monthly category budgets, and see accurate monthly totals, budget usage,
-and top categories on a responsive dashboard, with all data stored in
-SQLite. Eighty-one automated tests and an automated browser check
-confirmed the main functionality at the time of writing.
+The completed system lets a user record, edit, and delete expenses,
+manage their own categories, set monthly category budgets, and see
+accurate monthly totals, budget usage, and top categories on a
+responsive dashboard, with all data stored in SQLite. One hundred and
+five automated tests and a 37-step automated browser check confirmed the
+main functionality at the time of writing.
 
 The project showed that an AI coding assistant is most effective when
 the work is divided into small, approved steps and every claim is

@@ -4,18 +4,22 @@ A browser-based personal finance app built with **Node.js, Express, SQLite and v
 Record expenses, set a monthly budget per category, and see on a dashboard where your money goes.
 It runs locally on your computer for a single user — no accounts, no cloud, no bank connections.
 
-Built as an AI-Assisted Development exam project with Claude Code; the real development process is documented in
-[`docs/development-log.md`](docs/development-log.md) and the report in [`report/main.tex`](report/main.tex).
+Built as an AI-Assisted Development exam project with Claude Code. See [Documentation](#documentation) for the
+development log and the LaTeX project report.
 
 ## Features
 
-- **Expenses** — add, edit and delete (with confirmation) expenses with an amount, category, date and description.
+- **Expenses** — add, edit and delete (with confirmation) expenses with an amount, category, date and description;
+  **Clear** discards a half-filled form, **Cancel** leaves edit mode.
+- **Categories** — nine defaults to start with; add your own, rename them, or delete ones you no longer use.
 - **Budgets** — one recurring monthly limit per category; set, change or remove it at any time.
 - **Dashboard** for a selected month — total spent, total budget, budget left or exceeded, categories over budget,
   a spending-vs-budget bar chart and the top 3 categories.
-- **Validation** in the browser *and* on the server, with clear messages under each form field.
+- **Validation** in the browser *and* on the server, with clear messages under each form field that disappear as
+  soon as you correct the field.
 - **Persistent storage** in a local SQLite file; data survives restarts.
 - Amounts in euros (€), stored as integer cents so totals are always exact.
+- A clean, responsive interface in neutral blue-grey tones; colour is used only for budget warnings.
 
 ## Requirements
 
@@ -60,15 +64,21 @@ Example (PowerShell): `$env:PORT = '3100'; npm start`
 ### Your data
 
 Everything is stored in `data/expenses.db` (plus the SQLite helper files `-wal` and `-shm`). These files are excluded
-from Git. To start over, stop the server and delete them; the database and the nine categories are recreated on the
-next start.
+from Git. To start over, stop the server and delete them; a new database with the nine default categories is created
+on the next start.
 
 ## How the numbers are calculated
 
 - **Month rule:** an expense belongs to the month of its date. A month is the range from the 1st (inclusive) to the
   1st of the next month (exclusive), e.g. October 2026 = `2026-10-01` ≤ date < `2026-11-01`. The expense list and the
   dashboard use the same rule.
-- **Categories:** Food, Transport, Housing, Utilities, Health, Entertainment, Shopping, Education, Other.
+- **Categories:** a new database starts with Food, Transport, Housing, Utilities, Health, Entertainment, Shopping,
+  Education and Other. You can add, rename and delete categories in the **Categories** panel:
+  - names are 1–40 characters and must be unique, ignoring upper/lower case (also for Cyrillic, e.g. "Храна"/"храна");
+  - renaming keeps all expenses and the budget attached;
+  - a category that still has expenses cannot be deleted (move or delete those expenses first); deleting a category
+    also removes its budget;
+  - deleted default categories stay deleted — they are added only once, when the database is created.
 - **Remaining budget** = monthly limit − spent; a negative value means the budget is exceeded.
 - **Status:** `ok` below 80 % of the budget, `warning` from 80 % up to and including 100 %, `over` above 100 %,
   `no-budget` when a category has no budget.
@@ -81,7 +91,10 @@ All endpoints are under `/api` and use JSON. Amounts are sent and returned in eu
 | Method | Path | Request | Success | Errors |
 |---|---|---|---|---|
 | GET | `/api/health` | – | 200 `{status, database}` | 500 |
-| GET | `/api/categories` | – | 200 list of `{id, name}` | – |
+| GET | `/api/categories` | – | 200 list of `{id, name, expenseCount}` | – |
+| POST | `/api/categories` | `{name}` | 201 created category | 400 invalid name, 409 duplicate |
+| PUT | `/api/categories/:id` | `{name}` | 200 renamed category | 400, 404, 409 duplicate |
+| DELETE | `/api/categories/:id` | – | 204 (its budget is deleted too) | 400, 404, 409 still used by expenses |
 | GET | `/api/expenses` | optional query `month=YYYY-MM`, `categoryId` | 200 list, newest first | 400 invalid filter |
 | GET | `/api/expenses/:id` | – | 200 expense | 400 invalid ID, 404 |
 | POST | `/api/expenses` | `{amount, categoryId, date, description}` | 201 created expense | 400, 413 |
@@ -93,8 +106,8 @@ All endpoints are under `/api` and use JSON. Amounts are sent and returned in eu
 | GET | `/api/analytics/summary` | optional query `month=YYYY-MM` (default: current month) | 200 summary | 400 |
 
 **Validation rules:** amount > 0, at most 2 decimals, at most 1,000,000; `categoryId` must exist; date must be a real
-calendar date `YYYY-MM-DD` (years 2000–2100); description 1–200 characters after trimming. Fields such as `id` or
-`createdAt` sent by the client are ignored.
+calendar date `YYYY-MM-DD` (years 2000–2100); description 1–200 characters after trimming; category name 1–40
+characters after trimming and collapsing spaces. Fields such as `id` or `createdAt` sent by the client are ignored.
 
 **Errors** always have the same shape:
 
@@ -108,8 +121,9 @@ calendar date `YYYY-MM-DD` (years 2000–2100); description 1–200 characters a
 }
 ```
 
-Codes: `VALIDATION_ERROR` (400), `INVALID_JSON` (400), `NOT_FOUND` (404), `PAYLOAD_TOO_LARGE` (413),
-`INTERNAL_ERROR` (500 — details are logged on the server, never sent to the client).
+Codes: `VALIDATION_ERROR` (400), `INVALID_JSON` (400), `NOT_FOUND` (404), `CONFLICT` (409 — duplicate category name
+or a category still in use), `PAYLOAD_TOO_LARGE` (413), `INTERNAL_ERROR` (500 — details are logged on the server,
+never sent to the client).
 
 **Example** (PowerShell, with the server running):
 
@@ -137,17 +151,18 @@ Summary response for that data:
 npm test
 ```
 
-The suite (81 tests) uses Node's built-in `node:test` runner and covers:
+The suite (105 tests) uses Node's built-in `node:test` runner and covers:
 
-- validation rules (amounts, dates, months, IDs, descriptions),
-- the database schema, constraints and persistence after closing and reopening,
-- expense, budget and analytics services, including month boundaries, exact budget limits and empty months,
+- validation rules (amounts, dates, months, IDs, descriptions, category names),
+- the database schema, constraints, one-time seeding of default categories, and persistence after closing and reopening,
+- expense, category, budget and analytics services, including month boundaries, exact budget limits, empty months,
+  duplicate category names and categories that are still in use,
 - the HTTP API: status codes, error format, malformed JSON, oversized bodies, unknown routes, database failures,
 - the real `src/server.js` process: start-up, invalid configuration, and data surviving a server restart.
 
 Every test uses its own temporary database in the system temp folder, so your data in `data/` is never touched.
-`npm run test:coverage` reports about 96 % line coverage. The browser interface was checked manually and with a
-temporary headless-browser script (see the development log, Entry 7).
+`npm run test:coverage` reports about 97 % line coverage. The browser interface was checked by hand and with a
+temporary 37-step headless-browser script that is not part of the repository (see the development log).
 
 ## Project structure
 
@@ -157,8 +172,8 @@ src/
   app.js                 createApp(db): middleware, routes, static files, error handler
   errors.js              error types and the central JSON error handler
   validation.js          shared input checks and the month rule
-  db/database.js         opens SQLite, creates the schema, seeds categories
-  routes/                expenses, budgets, analytics, categories (HTTP only)
+  db/database.js         opens SQLite, creates the schema, adds the default categories once
+  routes/                expenses, categories, budgets, analytics (HTTP only)
   services/              business rules and parameterized SQL
 public/
   index.html             the single-page interface
@@ -180,8 +195,42 @@ report/main.tex          LaTeX project report
 | `npm install` tries to run `node-gyp` and asks for Python | Keep the project's `.npmrc` (`ignore-scripts=true`); better-sqlite3 uses its bundled binary and needs no compilation. |
 | `Could not open database at …` | `DB_PATH` points to a folder or an unwritable location; use a file path such as `data/expenses.db`. |
 | The page shows "Could not load data" | The server is not running or was stopped; start it and click **Retry**. |
+| `"…" still has N expenses. Move or delete them first.` when deleting a category | Edit those expenses to use another category (or delete them), then delete the category. |
 
 ## Security notes
 
 All SQL uses parameterized statements, user text is rendered with `textContent` (never as HTML), the server listens on
 `127.0.0.1` only, request bodies are limited to 10 kB, and the database file is never committed.
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| `README.md` | This file: setup, usage, API, testing, troubleshooting |
+| [`docs/development-log.md`](docs/development-log.md) | Step-by-step record of the AI-assisted development: the actual prompts, files changed, real test results, problems and commits |
+| [`report/main.tex`](report/main.tex) | The project report (requirements, architecture, development process per module, challenges, evidence) as a LaTeX document |
+
+### Compiling the report (LaTeX / Overleaf)
+
+`report/main.tex` is a LaTeX source file, not a finished document: compile it to get the PDF. It is written for
+**pdfLaTeX** and uses only standard packages that Overleaf and TeX Live provide (`geometry`, `lmodern`, `booktabs`,
+`tabularx`, `tikz`, `hyperref`, …). The architecture diagram is drawn with TikZ, so no image files are needed for it.
+
+**In Overleaf** (no installation needed):
+
+1. Go to [overleaf.com](https://www.overleaf.com/), choose **New Project → Upload Project**, and upload
+   `report/main.tex` (or a ZIP of the `report/` folder).
+2. Open **Menu** and check that **Compiler** is **pdfLaTeX** and **Main document** is `main.tex`.
+3. Click **Recompile**, then **Download PDF**.
+4. To add screenshots, upload the image files (e.g. `01-dashboard.png`, `04-tests.png`) into the same Overleaf
+   project and remove the `%` signs in front of the matching `figure` blocks in the *Working System Evidence* section.
+
+**On your own computer** (needs a TeX distribution such as MiKTeX or TeX Live):
+
+```powershell
+cd report
+pdflatex main.tex
+pdflatex main.tex   # the second run fills in the table of contents
+```
+
+LaTeX build files (`.aux`, `.log`, `.out`, `.toc`, …) in `report/` are ignored by Git.
