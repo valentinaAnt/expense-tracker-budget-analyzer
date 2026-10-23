@@ -1,36 +1,20 @@
 # Expense Tracker & Budget Analyzer
 
-A browser-based personal finance app built with **Node.js, Express, SQLite and vanilla JavaScript**.
-Record expenses, set a monthly budget per category, and see on a dashboard where your money goes.
-It runs locally on your computer for a single user — no accounts, no cloud, no bank connections.
-
-Built as an AI-Assisted Development exam project with Claude Code. See [Documentation](#documentation) for the
-development log and the LaTeX project report.
+A local, single-user web app for tracking expenses and monthly budgets, built with **Node.js, Express, SQLite and
+vanilla JavaScript** as an AI-Assisted Development exam project (with Claude Code).
 
 ## Features
 
-- **Expenses** — add, edit and delete (with confirmation) expenses with an amount, category, date and description;
-  **Clear** discards a half-filled form, **Cancel** leaves edit mode.
-- **Categories** — nine defaults to start with; add your own, rename them, or delete ones you no longer use.
-- **Budgets** — one recurring monthly limit per category; set, change or remove it at any time.
-- **Dashboard** for a selected month — total spent, total budget, budget left or exceeded, categories over budget,
-  a spending-vs-budget bar chart and the top 3 categories.
-- **Validation** in the browser *and* on the server, with clear messages under each form field that disappear as
-  soon as you correct the field.
-- **Persistent storage** in a local SQLite file; data survives restarts.
-- Amounts in euros (€), stored as integer cents so totals are always exact.
-- A clean, responsive interface in neutral blue-grey tones; colour is used only for budget warnings.
-
-## Requirements
-
-- [Node.js](https://nodejs.org/) **24 LTS** or newer (tested with 24.22.1 and npm 11.19.1)
-- Git
-- A modern browser (tested with Microsoft Edge)
-
-No database server, Python or C++ build tools are needed: SQLite is embedded through `better-sqlite3`, which ships a
-prebuilt binary.
+- Add, edit and delete expenses (amount in €, category, date, description).
+- Manage categories: nine defaults, plus add, rename and delete your own.
+- Set one recurring monthly budget per category.
+- Dashboard per month: total spent, total budget, budget left, categories over budget, a spending-vs-budget chart and
+  the top 3 categories.
+- Validation in the browser and on the server; data stored in SQLite and kept after restarts.
 
 ## Getting started
+
+Requires **Node.js 24 LTS** or newer and Git. No database server or build tools are needed.
 
 ```powershell
 git clone https://github.com/valentinaAnt/expense-tracker-budget-analyzer.git
@@ -39,198 +23,76 @@ npm ci
 npm start
 ```
 
-Open **http://127.0.0.1:3000** in your browser. Stop the server with **Ctrl+C**.
-
-`npm ci` installs the exact dependency versions from `package-lock.json` (`npm install` also works).
-
-### Scripts
+Open **http://127.0.0.1:3000**. Stop the server with **Ctrl+C**.
 
 | Command | What it does |
 |---|---|
-| `npm start` | Starts the server |
-| `npm run dev` | Starts the server and restarts it when a file changes (`node --watch`) |
-| `npm test` | Runs all automated tests |
-| `npm run test:coverage` | Runs the tests and prints a code coverage table |
+| `npm start` | Start the server |
+| `npm run dev` | Start and restart on file changes |
+| `npm test` | Run all automated tests |
+| `npm run test:coverage` | Run the tests with a coverage report |
 
-### Configuration
+Optional environment variables: `PORT` (default `3000`) and `DB_PATH` (default `data/expenses.db`).
+Data is stored in `data/expenses.db`, which is not committed to Git; delete it to start over.
 
-| Environment variable | Default | Meaning |
-|---|---|---|
-| `PORT` | `3000` | Port to listen on (`0` = any free port). The server only listens on `127.0.0.1`. |
-| `DB_PATH` | `data/expenses.db` | Location of the SQLite database file (created automatically) |
+## Calculation rules
 
-Example (PowerShell): `$env:PORT = '3100'; npm start`
-
-### Your data
-
-Everything is stored in `data/expenses.db` (plus the SQLite helper files `-wal` and `-shm`). These files are excluded
-from Git. To start over, stop the server and delete them; a new database with the nine default categories is created
-on the next start.
-
-## How the numbers are calculated
-
-- **Month rule:** an expense belongs to the month of its date. A month is the range from the 1st (inclusive) to the
-  1st of the next month (exclusive), e.g. October 2026 = `2026-10-01` ≤ date < `2026-11-01`. The expense list and the
-  dashboard use the same rule.
-- **Categories:** a new database starts with Food, Transport, Housing, Utilities, Health, Entertainment, Shopping,
-  Education and Other. You can add, rename and delete categories in the **Categories** panel:
-  - names are 1–40 characters and must be unique, ignoring upper/lower case (also for Cyrillic, e.g. "Храна"/"храна");
-  - renaming keeps all expenses and the budget attached;
-  - a category that still has expenses cannot be deleted (move or delete those expenses first); deleting a category
-    also removes its budget;
-  - deleted default categories stay deleted — they are added only once, when the database is created.
-- **Remaining budget** = monthly limit − spent; a negative value means the budget is exceeded.
-- **Status:** `ok` below 80 % of the budget, `warning` from 80 % up to and including 100 %, `over` above 100 %,
-  `no-budget` when a category has no budget.
-- **Top categories:** the 3 categories with the highest spending, with their share of the month's total.
+- An expense belongs to the month of its date (from the 1st up to, but not including, the 1st of the next month).
+- Remaining budget = monthly limit − spent; a negative value means the budget is exceeded.
+- Status: `ok` below 80 %, `warning` from 80 % to 100 %, `over` above 100 %, `no-budget` without a budget.
+- Category names are unique (ignoring case). A category that still has expenses cannot be deleted; deleting a category
+  also deletes its budget.
+- Amounts are stored as integer cents, so totals are exact.
 
 ## API
 
-All endpoints are under `/api` and use JSON. Amounts are sent and returned in euros (e.g. `12.5`).
+All endpoints are under `/api` and use JSON; amounts are in euros.
 
-| Method | Path | Request | Success | Errors |
-|---|---|---|---|---|
-| GET | `/api/health` | – | 200 `{status, database}` | 500 |
-| GET | `/api/categories` | – | 200 list of `{id, name, expenseCount}` | – |
-| POST | `/api/categories` | `{name}` | 201 created category | 400 invalid name, 409 duplicate |
-| PUT | `/api/categories/:id` | `{name}` | 200 renamed category | 400, 404, 409 duplicate |
-| DELETE | `/api/categories/:id` | – | 204 (its budget is deleted too) | 400, 404, 409 still used by expenses |
-| GET | `/api/expenses` | optional query `month=YYYY-MM`, `categoryId` | 200 list, newest first | 400 invalid filter |
-| GET | `/api/expenses/:id` | – | 200 expense | 400 invalid ID, 404 |
-| POST | `/api/expenses` | `{amount, categoryId, date, description}` | 201 created expense | 400, 413 |
-| PUT | `/api/expenses/:id` | same as POST | 200 updated expense | 400, 404 |
-| DELETE | `/api/expenses/:id` | – | 204 | 400, 404 |
-| GET | `/api/budgets` | – | 200 list of `{categoryId, categoryName, monthlyLimit, updatedAt}` | – |
-| PUT | `/api/budgets/:categoryId` | `{monthlyLimit}` | 200 created or replaced budget | 400, 404 unknown category |
-| DELETE | `/api/budgets/:categoryId` | – | 204 | 400, 404 no budget |
-| GET | `/api/analytics/summary` | optional query `month=YYYY-MM` (default: current month) | 200 summary | 400 |
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/health` | Server and database status |
+| GET, POST | `/api/categories` | List (with expense counts) / create |
+| PUT, DELETE | `/api/categories/:id` | Rename / delete |
+| GET, POST | `/api/expenses` | List (optional `month=YYYY-MM`, `categoryId`) / create |
+| GET, PUT, DELETE | `/api/expenses/:id` | Read / update / delete |
+| GET | `/api/budgets` | List budgets |
+| PUT, DELETE | `/api/budgets/:categoryId` | Set / remove a budget |
+| GET | `/api/analytics/summary` | Monthly summary (optional `month=YYYY-MM`) |
 
-**Validation rules:** amount > 0, at most 2 decimals, at most 1,000,000; `categoryId` must exist; date must be a real
-calendar date `YYYY-MM-DD` (years 2000–2100); description 1–200 characters after trimming; category name 1–40
-characters after trimming and collapsing spaces. Fields such as `id` or `createdAt` sent by the client are ignored.
-
-**Errors** always have the same shape:
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid expense data",
-    "details": [{ "field": "amount", "message": "Amount must be a positive number with at most 2 decimals, up to 1,000,000" }]
-  }
-}
-```
-
-Codes: `VALIDATION_ERROR` (400), `INVALID_JSON` (400), `NOT_FOUND` (404), `CONFLICT` (409 — duplicate category name
-or a category still in use), `PAYLOAD_TOO_LARGE` (413), `INTERNAL_ERROR` (500 — details are logged on the server,
-never sent to the client).
-
-**Example** (PowerShell, with the server running):
-
-```powershell
-Invoke-RestMethod -Method Put -Uri http://127.0.0.1:3000/api/budgets/1 -ContentType 'application/json' -Body '{"monthlyLimit": 200}'
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:3000/api/expenses -ContentType 'application/json' `
-  -Body '{"amount": 175.25, "categoryId": 1, "date": "2026-10-22", "description": "Groceries"}'
-Invoke-RestMethod "http://127.0.0.1:3000/api/analytics/summary?month=2026-10" | ConvertTo-Json -Depth 5
-```
-
-Summary response for that data:
-
-```json
-{
-  "month": "2026-10", "totalSpent": 175.25, "totalBudget": 200, "expenseCount": 1,
-  "categories": [{ "categoryId": 1, "name": "Food", "spent": 175.25, "expenseCount": 1, "budget": 200,
-                   "remaining": 24.75, "percentUsed": 87.6, "status": "warning" }],
-  "topCategories": [{ "categoryId": 1, "name": "Food", "spent": 175.25, "sharePercent": 100 }]
-}
-```
+Errors are returned as `{"error": {"code", "message", "details"}}` with the codes `VALIDATION_ERROR` / `INVALID_JSON`
+(400), `NOT_FOUND` (404), `CONFLICT` (409), `PAYLOAD_TOO_LARGE` (413) and `INTERNAL_ERROR` (500).
 
 ## Testing
 
-```powershell
-npm test
-```
-
-The suite (105 tests) uses Node's built-in `node:test` runner and covers:
-
-- validation rules (amounts, dates, months, IDs, descriptions, category names),
-- the database schema, constraints, one-time seeding of default categories, and persistence after closing and reopening,
-- expense, category, budget and analytics services, including month boundaries, exact budget limits, empty months,
-  duplicate category names and categories that are still in use,
-- the HTTP API: status codes, error format, malformed JSON, oversized bodies, unknown routes, database failures,
-- the real `src/server.js` process: start-up, invalid configuration, and data surviving a server restart.
-
-Every test uses its own temporary database in the system temp folder, so your data in `data/` is never touched.
-`npm run test:coverage` reports about 97 % line coverage. The browser interface was checked by hand and with a
-temporary 37-step headless-browser script that is not part of the repository (see the development log).
+`npm test` runs 105 tests with Node's built-in `node:test` runner: validation, database, services, the HTTP API and the
+real server process (including data surviving a restart). Each test uses its own temporary database, so your data is
+never touched. Line coverage is about 97 %.
 
 ## Project structure
 
 ```
-src/
-  server.js              starts the HTTP server, opens the database, handles Ctrl+C
-  app.js                 createApp(db): middleware, routes, static files, error handler
-  errors.js              error types and the central JSON error handler
-  validation.js          shared input checks and the month rule
-  db/database.js         opens SQLite, creates the schema, adds the default categories once
-  routes/                expenses, categories, budgets, analytics (HTTP only)
-  services/              business rules and parameterized SQL
-public/
-  index.html             the single-page interface
-  css/styles.css         layout and styling
-  js/api.js              all requests to the API
-  js/app.js              rendering and user interactions
-tests/                   unit, HTTP and server-process tests
-data/                    local database (not in Git)
-docs/development-log.md  AI-assisted development record
-report/main.tex          LaTeX project report
+src/        server, app setup, validation, errors, database, routes, services
+public/     index.html, css/styles.css, js/api.js, js/app.js
+tests/      unit, HTTP and server tests
+docs/       development-log.md (AI-assisted development record)
+report/     main.tex (LaTeX project report)
 ```
 
 ## Troubleshooting
 
 | Problem | Solution |
 |---|---|
-| `npm.ps1 cannot be loaded because running scripts is disabled` | Run `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` once, or use `npm.cmd start`. |
-| `Could not start server on port 3000 … EADDRINUSE` | Another program (or a second copy of the app) uses port 3000. Stop it or choose another port: `$env:PORT = '3100'; npm start`. |
-| `npm install` tries to run `node-gyp` and asks for Python | Keep the project's `.npmrc` (`ignore-scripts=true`); better-sqlite3 uses its bundled binary and needs no compilation. |
-| `Could not open database at …` | `DB_PATH` points to a folder or an unwritable location; use a file path such as `data/expenses.db`. |
-| The page shows "Could not load data" | The server is not running or was stopped; start it and click **Retry**. |
-| `"…" still has N expenses. Move or delete them first.` when deleting a category | Edit those expenses to use another category (or delete them), then delete the category. |
-
-## Security notes
-
-All SQL uses parameterized statements, user text is rendered with `textContent` (never as HTML), the server listens on
-`127.0.0.1` only, request bodies are limited to 10 kB, and the database file is never committed.
+| `npm.ps1 cannot be loaded` | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, or use `npm.cmd`. |
+| Port 3000 already in use | Stop the other program or use another port: `$env:PORT = '3100'; npm start`. |
+| `npm install` asks for Python / node-gyp | Keep the project's `.npmrc` (`ignore-scripts=true`). |
+| "Could not load data" in the page | Start the server and click **Retry**. |
 
 ## Documentation
 
-| Document | Contents |
-|---|---|
-| `README.md` | This file: setup, usage, API, testing, troubleshooting |
-| [`docs/development-log.md`](docs/development-log.md) | Step-by-step record of the AI-assisted development: the actual prompts, files changed, real test results, problems and commits |
-| [`report/main.tex`](report/main.tex) | The project report (requirements, architecture, development process per module, challenges, evidence) as a LaTeX document |
+- [`docs/development-log.md`](docs/development-log.md) — the actual prompts, changes, test results and commits.
+- [`report/main.tex`](report/main.tex) — the project report as a LaTeX file.
 
-### Compiling the report (LaTeX / Overleaf)
-
-`report/main.tex` is a LaTeX source file, not a finished document: compile it to get the PDF. It is written for
-**pdfLaTeX** and uses only standard packages that Overleaf and TeX Live provide (`geometry`, `lmodern`, `booktabs`,
-`tabularx`, `tikz`, `hyperref`, …). The architecture diagram is drawn with TikZ, so no image files are needed for it.
-
-**In Overleaf** (no installation needed):
-
-1. Go to [overleaf.com](https://www.overleaf.com/), choose **New Project → Upload Project**, and upload
-   `report/main.tex` (or a ZIP of the `report/` folder).
-2. Open **Menu** and check that **Compiler** is **pdfLaTeX** and **Main document** is `main.tex`.
-3. Click **Recompile**, then **Download PDF**.
-4. To add screenshots, upload the image files (e.g. `01-dashboard.png`, `04-tests.png`) into the same Overleaf
-   project and remove the `%` signs in front of the matching `figure` blocks in the *Working System Evidence* section.
-
-**On your own computer** (needs a TeX distribution such as MiKTeX or TeX Live):
-
-```powershell
-cd report
-pdflatex main.tex
-pdflatex main.tex   # the second run fills in the table of contents
-```
-
-LaTeX build files (`.aux`, `.log`, `.out`, `.toc`, …) in `report/` are ignored by Git.
+**Compiling the report in Overleaf:** New Project → Upload Project → upload `report/main.tex` together with the two
+screenshots in `report/` (`01-dashboard.png`, `04-tests.png`), check that the compiler is **pdfLaTeX**, then click
+**Recompile** and **Download PDF**.
+Locally (with MiKTeX or TeX Live): run `pdflatex main.tex` twice in the `report` folder.

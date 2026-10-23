@@ -765,3 +765,43 @@ i want you to make the documantation. i will onnnly fill the screenshots later
 - *TODO (student):* confirm whether a PDF or a Google Docs document is required.
 
 **Commit:** pending.
+
+---
+
+## Entry 20 — Shorter README (2026-10-23)
+
+**Prompt used:**
+
+```
+lets remove bukgarian words from README
+also make the readme shortess
+```
+
+**Changes:** `README.md` rewritten more concisely (about 100 lines instead of 237). The Cyrillic example of
+case-insensitive category names was removed. Kept: features, getting started, scripts and environment variables,
+calculation rules, a compact API table with the error codes, testing, project structure, troubleshooting, and the
+Overleaf compile instructions. Removed: the detailed request/response columns, the PowerShell API examples, the
+example JSON and the security section (these details remain in the report and the code).
+
+**Verification:** a search of the README for Cyrillic characters finds none.
+
+**Commit:** pending — together with Entry 19.
+
+---
+
+## Entry 21 — Screenshots added to the report (2026-10-23)
+
+**Prompt used:** "how to  make the second screenshot", then the student pasted their Overleaf version of `main.tex`
+with "okay, what about now:".
+
+**Evidence (taken by the student):** `report/01-dashboard.png` (1130×943, dashboard for October 2026: spent €22.50,
+budget €430.00, 0 categories over budget) and `report/04-tests.png` (1322×1500, end of `npm test`: tests 105,
+suites 22, pass 105, fail 0).
+
+**Review by Claude:** both images were opened and checked against their captions. The dashboard caption said "one
+category over budget", but the screenshot shows 0 over budget, so the caption was corrected to describe what is
+visible. The figures now use `[H]` (`float` package) so each stays under its heading; the student's `\newpage` is
+no longer needed. The test screenshot is shown at 75 % width because it is taller than it is wide. The local
+`main.tex` was updated to match, and the README's Overleaf instructions now say to upload both images.
+
+**Commit:** pending.
