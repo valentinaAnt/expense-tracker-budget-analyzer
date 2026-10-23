@@ -3,6 +3,7 @@
 
 export const MAX_AMOUNT_CENTS = 100_000_000; // 1,000,000.00
 export const MAX_DESCRIPTION_LENGTH = 200;
+export const MAX_CATEGORY_NAME_LENGTH = 40;
 const MIN_YEAR = 2000;
 const MAX_YEAR = 2100;
 
@@ -90,6 +91,13 @@ export function normalizeDescription(value) {
   if (typeof value !== 'string') return null;
   const text = value.trim();
   return text.length >= 1 && text.length <= MAX_DESCRIPTION_LENGTH ? text : null;
+}
+
+/** Trims and collapses inner spaces; returns null if not a string, empty, or too long. */
+export function normalizeCategoryName(value) {
+  if (typeof value !== 'string') return null;
+  const name = value.trim().replace(/\s+/g, ' ');
+  return name.length >= 1 && name.length <= MAX_CATEGORY_NAME_LENGTH ? name : null;
 }
 
 export function isPlainObject(value) {

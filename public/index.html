@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
   <title>Expense Tracker &amp; Budget Analyzer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232563eb'/%3E%3Cpath d='M7 18v-6M12 18V6M17 18v-4' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/styles.css">
   <script type="module" src="js/app.js"></script>
 </head>
@@ -12,12 +14,21 @@
 
   <header class="app-header">
     <div class="container header-inner">
-      <h1 class="app-title">Expense Tracker <span>&amp; Budget Analyzer</span></h1>
-      <div class="month-picker">
-        <button type="button" class="btn btn-icon" id="prev-month" aria-label="Previous month">&lsaquo;</button>
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M6 20V11"/><path d="M12 20V4"/><path d="M18 20v-6"/></svg>
+        </span>
+        <h1 class="app-title">Expense Tracker <span>&amp; Budget Analyzer</span></h1>
+      </div>
+      <div class="month-picker" role="group" aria-label="Selected month">
+        <button type="button" class="btn btn-ghost btn-icon" id="prev-month" aria-label="Previous month">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
         <label for="month" class="visually-hidden">Month</label>
         <input type="month" id="month" min="2000-01" max="2100-12" pattern="\d{4}-\d{2}" required>
-        <button type="button" class="btn btn-icon" id="next-month" aria-label="Next month">&rsaquo;</button>
+        <button type="button" class="btn btn-ghost btn-icon" id="next-month" aria-label="Next month">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
       </div>
     </div>
   </header>
@@ -31,92 +42,149 @@
     </div>
 
     <section aria-labelledby="summary-heading">
-      <h2 id="summary-heading" class="section-title">Overview for <span class="month-label">…</span></h2>
+      <div class="page-heading">
+        <h2 id="summary-heading" class="section-title">Overview for <span class="month-label">…</span></h2>
+        <p class="section-subtitle">All figures are calculated from your recorded expenses and budgets.</p>
+      </div>
       <div class="cards">
         <article class="card">
-          <h3 class="card-title">Spent</h3>
+          <div class="card-head">
+            <h3 class="card-title">Spent</h3>
+            <span class="card-icon" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h3"/></svg>
+            </span>
+          </div>
           <p class="card-value" id="card-spent">–</p>
           <p class="card-note" id="card-spent-note"></p>
         </article>
         <article class="card">
-          <h3 class="card-title">Monthly budget</h3>
+          <div class="card-head">
+            <h3 class="card-title">Monthly budget</h3>
+            <span class="card-icon" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+            </span>
+          </div>
           <p class="card-value" id="card-budget">–</p>
           <p class="card-note" id="card-budget-note"></p>
         </article>
         <article class="card" id="card-remaining-box">
-          <h3 class="card-title" id="card-remaining-title">Budget left</h3>
+          <div class="card-head">
+            <h3 class="card-title" id="card-remaining-title">Budget left</h3>
+            <span class="card-icon" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>
+            </span>
+          </div>
           <p class="card-value" id="card-remaining">–</p>
           <p class="card-note" id="card-remaining-note"></p>
         </article>
         <article class="card">
-          <h3 class="card-title">Over budget</h3>
+          <div class="card-head">
+            <h3 class="card-title">Over budget</h3>
+            <span class="card-icon" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+            </span>
+          </div>
           <p class="card-value" id="card-over">–</p>
           <p class="card-note" id="card-over-note"></p>
         </article>
       </div>
     </section>
 
-    <div class="grid-2">
+    <div class="grid-2 grid-wide-left">
       <section class="panel" aria-labelledby="chart-heading">
-        <h2 id="chart-heading" class="panel-title">Spending by category</h2>
+        <div class="panel-header">
+          <h2 id="chart-heading" class="panel-title">Spending by category</h2>
+          <p class="panel-subtitle">Each bar shows how much of the monthly budget is used.</p>
+        </div>
         <ul id="category-chart" class="bar-chart"></ul>
         <p id="chart-empty" class="empty" hidden>No spending or budgets for this month yet.</p>
       </section>
 
       <section class="panel" aria-labelledby="top-heading">
-        <h2 id="top-heading" class="panel-title">Top categories</h2>
+        <div class="panel-header">
+          <h2 id="top-heading" class="panel-title">Top categories</h2>
+          <p class="panel-subtitle">Where most of this month's money went.</p>
+        </div>
         <ol id="top-categories" class="top-list"></ol>
         <p id="top-empty" class="empty" hidden>No expenses this month.</p>
       </section>
     </div>
 
     <div class="grid-2">
-      <section class="panel" id="expense-form-panel" aria-labelledby="form-heading">
-        <h2 id="form-heading" class="panel-title">Add expense</h2>
-        <form id="expense-form" novalidate>
-          <div class="form-row">
-            <div class="field">
-              <label for="amount">Amount (€)</label>
-              <input id="amount" name="amount" type="number" inputmode="decimal" step="0.01" min="0.01"
-                     max="1000000" required aria-describedby="amount-error">
-              <p class="field-error" id="amount-error"></p>
+      <div class="stack">
+        <section class="panel" id="expense-form-panel" aria-labelledby="form-heading">
+          <div class="panel-header">
+            <h2 id="form-heading" class="panel-title">Add expense</h2>
+            <p class="panel-subtitle">Amounts are in euros.</p>
+          </div>
+          <form id="expense-form" novalidate>
+            <div class="form-row">
+              <div class="field">
+                <label for="amount">Amount</label>
+                <span class="input-affix">
+                  <span class="affix" aria-hidden="true">€</span>
+                  <input id="amount" name="amount" type="number" inputmode="decimal" step="0.01" min="0.01"
+                         max="1000000" required placeholder="0.00" aria-describedby="amount-error">
+                </span>
+                <p class="field-error" id="amount-error"></p>
+              </div>
+              <div class="field">
+                <label for="categoryId">Category</label>
+                <select id="categoryId" name="categoryId" required aria-describedby="categoryId-error">
+                  <option value="">Choose…</option>
+                </select>
+                <p class="field-error" id="categoryId-error"></p>
+              </div>
             </div>
             <div class="field">
-              <label for="categoryId">Category</label>
-              <select id="categoryId" name="categoryId" required aria-describedby="categoryId-error">
-                <option value="">Choose…</option>
-              </select>
-              <p class="field-error" id="categoryId-error"></p>
+              <label for="date">Date</label>
+              <input id="date" name="date" type="date" min="2000-01-01" max="2100-12-31" required
+                     aria-describedby="date-error">
+              <p class="field-error" id="date-error"></p>
             </div>
+            <div class="field">
+              <label for="description">Description</label>
+              <input id="description" name="description" type="text" maxlength="200" required
+                     autocomplete="off" placeholder="e.g. Weekly groceries" aria-describedby="description-error">
+              <p class="field-error" id="description-error"></p>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="submit-expense">Add expense</button>
+              <button type="button" class="btn" id="reset-expense">Clear</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel" aria-labelledby="categories-heading">
+          <div class="panel-header">
+            <h2 id="categories-heading" class="panel-title">Categories</h2>
+            <p class="panel-subtitle">Add your own, rename them, or delete ones you no longer use.</p>
           </div>
-          <div class="field">
-            <label for="date">Date</label>
-            <input id="date" name="date" type="date" min="2000-01-01" max="2100-12-31" required
-                   aria-describedby="date-error">
-            <p class="field-error" id="date-error"></p>
-          </div>
-          <div class="field">
-            <label for="description">Description</label>
-            <input id="description" name="description" type="text" maxlength="200" required
-                   autocomplete="off" aria-describedby="description-error">
-            <p class="field-error" id="description-error"></p>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary" id="submit-expense">Add expense</button>
-            <button type="button" class="btn" id="cancel-edit" hidden>Cancel</button>
-          </div>
-        </form>
-      </section>
+          <form id="category-form" class="category-add" novalidate>
+            <label for="new-category" class="visually-hidden">New category name</label>
+            <input id="new-category" class="text-input" name="name" type="text" maxlength="40" autocomplete="off"
+                   placeholder="New category, e.g. Pets" aria-describedby="new-category-error">
+            <button type="submit" class="btn btn-primary">Add</button>
+            <p class="field-error" id="new-category-error"></p>
+          </form>
+          <ul id="category-list" class="category-list"></ul>
+        </section>
+      </div>
 
       <section class="panel" aria-labelledby="budget-heading">
-        <h2 id="budget-heading" class="panel-title">Monthly budgets</h2>
-        <p class="hint">Each budget is a monthly limit that applies to every month.</p>
+        <div class="panel-header">
+          <h2 id="budget-heading" class="panel-title">Monthly budgets</h2>
+          <p class="panel-subtitle">Each budget is a monthly limit that applies to every month.</p>
+        </div>
         <ul id="budget-list" class="budget-list"></ul>
       </section>
     </div>
 
     <section class="panel" aria-labelledby="expenses-heading">
-      <h2 id="expenses-heading" class="panel-title">Expenses in <span class="month-label">…</span></h2>
+      <div class="panel-header">
+        <h2 id="expenses-heading" class="panel-title">Expenses in <span class="month-label">…</span></h2>
+        <p class="panel-subtitle">Newest first.</p>
+      </div>
       <p id="expense-loading" class="empty">Loading expenses…</p>
       <p id="expense-empty" class="empty" hidden>No expenses recorded for this month. Add one with the form above.</p>
       <div class="table-wrap">
@@ -136,10 +204,14 @@
     </section>
   </main>
 
+  <footer class="app-footer container">
+    <p>Data is stored locally in SQLite on this computer.</p>
+  </footer>
+
   <dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
     <form method="dialog">
-      <h2 id="confirm-title" class="panel-title">Are you sure?</h2>
-      <p id="confirm-message"></p>
+      <h2 id="confirm-title" class="dialog-title">Are you sure?</h2>
+      <p id="confirm-message" class="dialog-message"></p>
       <div class="form-actions">
         <button type="submit" value="cancel" class="btn" autofocus>Cancel</button>
         <button type="submit" value="confirm" class="btn btn-danger" id="confirm-button">Delete</button>

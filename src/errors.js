@@ -26,6 +26,14 @@ export class NotFoundError extends AppError {
   }
 }
 
+/** The request is valid but clashes with existing data (e.g. a duplicate name). */
+export class ConflictError extends AppError {
+  constructor(message) {
+    super(409, 'CONFLICT', message);
+    this.name = 'ConflictError';
+  }
+}
+
 /** Answers unknown /api routes with JSON instead of Express's default HTML page. */
 export function apiNotFound(req, res, next) {
   next(new NotFoundError(`Route ${req.method} ${req.originalUrl} not found`));

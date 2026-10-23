@@ -22,6 +22,10 @@ const SCHEMA = `
     name TEXT NOT NULL UNIQUE
   );
 
+  -- Safety net against duplicates that differ only in upper/lower case (ASCII); the service also
+  -- checks non-ASCII names such as Cyrillic.
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name_nocase ON categories(name COLLATE NOCASE);
+
   CREATE TABLE IF NOT EXISTS expenses (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
@@ -69,9 +73,15 @@ export function openDatabase(filePath) {
 function initializeSchema(db) {
   const initialize = db.transaction(() => {
     db.exec(SCHEMA);
-    const insertCategory = db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)');
-    for (const name of DEFAULT_CATEGORIES) {
-      insertCategory.run(name);
+
+    // The default categories are added only once (tracked with SQLite's user_version),
+    // so categories the user deletes later are not recreated on the next start.
+    if (db.pragma('user_version', { simple: true }) === 0) {
+      const insertCategory = db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)');
+      for (const name of DEFAULT_CATEGORIES) {
+        insertCategory.run(name);
+      }
+      db.pragma('user_version = 1');
     }
   });
   initialize();

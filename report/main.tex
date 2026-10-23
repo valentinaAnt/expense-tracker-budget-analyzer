@@ -333,7 +333,12 @@ asked which currency to display, an open question from the planning
 stage. Claude then generated the HTML, CSS, and JavaScript, rendered the
 page with sample data in headless Microsoft Edge, and inspected the
 screenshots at desktop and mobile widths. This review found a text bug
-(``1 categories''), which was fixed.
+(``1 categories''), which was fixed. Later, at the student's request,
+the interface was restyled in the style of common dashboard templates.
+A first version used warm grey tones and an automatic dark mode; after
+reviewing it, the student rejected the dark mode and asked for a
+blue-grey palette, which became the final design, with amber and red
+reserved for budget warnings.
 
 \textbf{Testing Strategy.} Claude wrote a temporary script (not part of
 the repository) that controlled headless Edge and used the real
@@ -351,7 +356,7 @@ by producing and reading screenshots, not only by writing code.
 
 \begin{itemize}
     \item Prompt 1 (project brief, FR5): \prompt{Create a clean, responsive interface with: A dashboard with summary cards. An expense form. An expense list with edit and delete actions. A budget management section.}
-    \item Prompt 2 (answer to Claude's currency question): \prompt{euro}
+    \item Prompt 2: \prompt{can we make this more beatutiful / let the colors be neutral / we can use inspiration from internet templates}
 \end{itemize}
 
 \subsection{Expense Management Development}

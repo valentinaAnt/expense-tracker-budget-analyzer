@@ -466,4 +466,187 @@ policy, port in use, node-gyp/.npmrc, invalid database path, load error) and sec
   Firefox, but only Microsoft Edge was tested; changed to "tested with Microsoft Edge".
 - The "fresh clone" instructions themselves are verified in Phase 8 (final verification).
 
-**Commit:** pending — planned `docs: add README with setup, API, testing and troubleshooting`.
+**Commit:** `6b9201c` — `docs: add README with setup, API, testing and troubleshooting`.
+
+---
+
+## Entry 12 — Visual redesign with a neutral palette (2026-10-23)
+
+**Module / objective:** FR5 — make the interface more polished, with neutral colours.
+
+**Prompt used:**
+
+```
+can we make this more beatutiful
+
+let the colors be neutral
+
+we can use inspiration from internet templates
+```
+
+**Approach:** Claude interpreted "this" as the application interface (and said so, offering to adjust if the README
+was meant). No templates were downloaded or copied; the style follows the general look of popular neutral dashboard
+designs (e.g. shadcn/ui, Tailwind UI) from Claude's general knowledge: warm-grey "stone" palette, white cards with thin
+borders and soft shadows, near-black primary buttons, small muted labels, line icons, generous spacing. Colour is kept
+only where it carries meaning (amber = close to the limit, rose = over budget); normal bars became charcoal. An
+automatic dark mode follows the operating-system setting. No external fonts or libraries were added.
+
+**Files modified:**
+- `public/css/styles.css` — rewritten around colour tokens with a `prefers-color-scheme: dark` variant; sticky
+  translucent header; icon chips on cards; panel subtitles; dashed empty states; € prefix inputs; category pills;
+  share bars in Top categories; hover rows; neutral toast and dialog.
+- `public/index.html` — brand mark, inline SVG icons (decorative, `aria-hidden`), panel subtitles, € prefix on the
+  amount field, footer, inline SVG favicon, `color-scheme` meta tag. All IDs used by the JavaScript are unchanged.
+- `public/js/app.js` — category pill in the table, share bar in Top categories, € prefix wrapper on budget inputs
+  (the label gains visually hidden text "monthly budget in euros" for screen readers).
+
+**Verification by Claude (actual results):**
+- Re-ran the headless-Edge interaction script on a scratch database: 24/24 checks passed.
+- The first run reported one browser error: `favicon.ico` 404. Added an inline SVG favicon; the re-run reported
+  no console errors or exceptions.
+- Finding: the first "desktop" screenshot came out in dark mode, because headless Edge follows the Windows setting,
+  so this machine uses dark mode. The script now forces light mode for the light screenshots and dark mode for a
+  separate one. Light (1280 px), dark (1280 px) and mobile (390 px) screenshots inspected.
+- Mobile screenshot showed "Supermarket" broken mid-word in the table; changed `overflow-wrap: anywhere` to
+  `break-word`.
+- `npm test` → 81/81 pass (backend unchanged).
+
+**Commit:** not committed separately — the student reviewed it and asked for changes first (Entry 13); both steps are
+in one commit.
+
+---
+
+## Entry 13 — Blue-grey palette, dark mode removed (2026-10-23)
+
+**Module / objective:** FR5 — adjust the redesign to the student's preference.
+
+**Prompt used:**
+
+```
+noo i dont like dark mode
+
+i want neutral colours. let is be blue gamma
+```
+
+**What changed:**
+- `public/css/styles.css` — the `prefers-color-scheme: dark` block was removed (light theme only); the warm "stone"
+  tokens were replaced by a blue-grey "slate" palette (background `#f5f7fb`, borders `#e2e8f0`, text `#0f172a`,
+  muted text `#64748b`) with a calm blue accent (`#2563eb`) for the primary button, brand mark, icon chips, budget bars
+  and the first-place rank. Amber and rose stay reserved for "close to the limit" and "over budget". Toast uses a
+  dark slate background; dialog backdrop tinted slate.
+- `public/index.html` — `color-scheme` meta changed to `light`; favicon recoloured blue.
+
+**Verification by Claude (actual results):**
+- Searched `public/` for leftover dark-mode rules and old stone colours: none found.
+- Headless-Edge interaction script on a scratch database: 24/24 checks passed, no console errors or exceptions.
+- With the operating system emulated in dark mode, the page body background is `rgb(245, 247, 251)` (`#f5f7fb`), so
+  the page stays light regardless of the Windows setting (this machine uses dark mode).
+- Desktop screenshot inspected; `npm test` → 81/81 pass.
+
+**Commit:** not committed separately — included in the commit for Entries 14–15.
+
+---
+
+## Entry 14 — Custom categories: add, rename, delete (2026-10-23)
+
+**Module / objective:** Extend FR1/FR3 — users can manage their own categories (previously nine fixed ones, listed as a
+future improvement in the report).
+
+**Prompt used:**
+
+```
+what if someone wants to adjust these categories
+
+for example they want a category that we dont provide here??
+```
+
+Claude explained the current limitation and the design questions (duplicates, deleting categories that have expenses,
+defaults being recreated on start, renaming) and asked the student to choose the scope with three options. The student
+chose **"Add, rename, delete (Recommended)"**.
+
+**Files created / modified:**
+- `src/validation.js` — `normalizeCategoryName` (trim, collapse spaces, 1–40 characters).
+- `src/errors.js` — `ConflictError` (409, code `CONFLICT`).
+- `src/db/database.js` — default categories are seeded only once, tracked with `PRAGMA user_version`, so deleted
+  defaults stay deleted; existing databases (user_version 0, nine categories) upgrade without duplicates. New unique
+  index `categories(name COLLATE NOCASE)` as a safety net.
+- `src/services/categoryService.js` — `list()` now includes `expenseCount`; `create`, `rename`, `remove`.
+  Duplicate names are compared case-insensitively in JavaScript (also covers Cyrillic; SQLite NOCASE is ASCII-only).
+  Deleting is refused (409) while expenses use the category; otherwise the category and its budget are deleted in one
+  transaction.
+- `src/routes/categories.js` — `POST /api/categories` (201), `PUT /api/categories/:id` (200), `DELETE /api/categories/:id` (204).
+- `public/index.html`, `public/css/styles.css`, `public/js/api.js`, `public/js/app.js` — new "Categories" panel
+  (add field, list with expense counts, inline rename with Esc to cancel, delete with confirmation); categories are now
+  reloaded on every refresh so the drop-down, budgets and dashboard stay in sync.
+- Tests: `tests/categoryService.test.js`, `tests/categoriesApi.test.js` (new); `tests/database.test.js`,
+  `tests/validation.test.js` (extended).
+
+**Bug found and fixed on the way:** budget inputs used `toggleAttribute('aria-invalid', …)`, which sets
+`aria-invalid=""` — treated as *not invalid* by screen readers, and not matched by the red-border CSS. Replaced by a
+helper that sets `aria-invalid="true"`; the browser check now verifies the attribute value.
+
+**Tests performed by Claude (actual results):**
+- Existing suite after the backend change: 81/81 pass. With the new tests: 104/104, then 105/105 after adding an
+  upgrade test for databases created before `user_version` was used.
+- Mutation checks: case-sensitive name comparison → 4 tests fail (in the API tests the database index turns the
+  duplicate into a 500 instead of a 409); always re-seeding defaults → "deleted ones stay deleted" fails. Both reverted.
+- The student's real `data/expenses.db` was inspected read-only: `user_version 0`, 9 categories — exactly the upgrade
+  case covered by the new test.
+- Headless-Edge check extended to 34 steps (10 new for categories, 1 for `aria-invalid`): 34/34 pass. The only logged
+  browser message is the intentional 409 from the duplicate-name check.
+
+---
+
+## Entry 15 — Fix: mistaken click on a budget's Save showed a lingering error (2026-10-23)
+
+**Prompt used:**
+
+```
+if i click on some montly budget (to add money) but i click there by mistake, then it say Enter an amount.
+and do not let me continue
+```
+
+**Investigation (actual):** Claude reproduced the report in headless Edge with real mouse and keyboard events.
+Clicking into an empty budget field, clicking elsewhere or pressing Enter caused no error. **Clicking Save on an empty
+row** showed "Enter an amount.", moved the cursor into that field, and the red message **stayed visible permanently**,
+even after the user carried on typing elsewhere. Input was not actually blocked, but it looked and felt blocked.
+
+**Fix (`public/js/app.js`):**
+- Save on an empty row without a budget does nothing (nothing to save) — no error, no focus jump.
+- Emptying an existing budget and saving shows "Enter an amount, or use Remove to delete this budget."
+- A document-wide `input` listener clears a field's error as soon as the user edits that field (expense form, budgets,
+  categories), using the field's `aria-describedby` to find its message.
+
+**Verification (actual):** the reproduction script re-run: empty Save → no error, focus stays on the button; "-5" + Save
+→ error shown; one Backspace → error cleared immediately; emptied Food budget + Save → the new explanatory message.
+Full browser check 34/34; `npm test` 105/105.
+
+**Commit:** pending — together with Entries 12–14 and 16.
+
+---
+
+## Entry 16 — "Clear" button for the expense form (2026-10-23)
+
+**Prompt used:**
+
+```
+i want to add expense
+i set the amount, set category, set description
+
+at the end i think that i do not want to add expense and i reset everything but i cannot reset it. i can stop  adding an expense
+```
+
+**Cause:** the form's secondary button ("Cancel") was shown only while *editing* an expense; in add mode there was no
+way to discard what had been typed.
+
+**Fix:** `public/index.html` and `public/js/app.js` — the secondary button (`#reset-expense`) is always visible: it
+reads **Clear** in add mode and **Cancel** in edit mode. Both empty the amount, category and description, reset the
+date to today, remove error messages, return to add mode and put the cursor back in Amount. Nothing is sent to the server.
+
+**Verification by Claude (actual results):** the headless-Edge check gained 3 steps reproducing the student's scenario
+(fill amount 55, Transport, a date and "Changed my mind", then click Clear): the form was empty
+(`amount="" category="" description=""`), the date was today (`2026-10-23`), no error was shown, the number of expenses
+was unchanged, and focus was on Amount. Two existing steps were updated to check the button text instead of the old
+hidden button. Result: 37/37 checks passed; `npm test` 105/105. Screenshot inspected: Clear sits next to Add expense.
+
+**Commit:** pending — planned `feat: custom categories, blue-grey redesign, Clear button; fix lingering budget errors`.

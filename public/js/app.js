@@ -9,6 +9,7 @@ const monthFormat = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'num
 const AMOUNT_PATTERN = /^\d{1,7}(\.\d{1,2})?$/;
 const MAX_AMOUNT = 1_000_000;
 const MAX_DESCRIPTION_LENGTH = 200;
+const MAX_CATEGORY_NAME_LENGTH = 40;
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 const EXPENSE_FIELDS = ['amount', 'categoryId', 'date', 'description'];
 
@@ -40,6 +41,15 @@ function amountError(text) {
   if (!AMOUNT_PATTERN.test(text) || amount <= 0 || amount > MAX_AMOUNT) {
     return 'Enter a positive amount up to €1,000,000 with at most 2 decimals.';
   }
+  return '';
+}
+
+/** Same tidying as the server: trim and collapse inner spaces. */
+const normalizeName = (text) => text.trim().replace(/\s+/g, ' ');
+
+function categoryNameError(name) {
+  if (name === '') return 'Enter a category name.';
+  if (name.length > MAX_CATEGORY_NAME_LENGTH) return `Use at most ${MAX_CATEGORY_NAME_LENGTH} characters.`;
   return '';
 }
 
@@ -75,7 +85,7 @@ const elements = {
   formPanel: $('expense-form-panel'),
   formHeading: $('form-heading'),
   submit: $('submit-expense'),
-  cancelEdit: $('cancel-edit'),
+  resetExpense: $('reset-expense'),
   expenseTable: $('expense-table'),
   expenseRows: $('expense-rows'),
   expenseEmpty: $('expense-empty'),
@@ -85,6 +95,10 @@ const elements = {
   topList: $('top-categories'),
   topEmpty: $('top-empty'),
   budgetList: $('budget-list'),
+  categoryForm: $('category-form'),
+  newCategory: $('new-category'),
+  newCategoryError: $('new-category-error'),
+  categoryList: $('category-list'),
   dialog: $('confirm-dialog'),
   confirmTitle: $('confirm-title'),
   confirmMessage: $('confirm-message'),
@@ -96,8 +110,10 @@ const field = (name) => elements.form.elements.namedItem(name);
 const state = {
   month: toMonth(new Date()),
   categories: [],
+  budgets: [],
   expenses: [],
   editingId: null,
+  renamingId: null,
   refreshId: 0,
 };
 
@@ -116,6 +132,21 @@ function errorMessage(error) {
   if (error instanceof ApiError) return error.message;
   console.error(error);
   return 'Something went wrong. Please try again.';
+}
+
+/** Shows or clears an error under a single input; aria-invalid must be "true", not just present. */
+function setInputError(input, errorBox, message) {
+  errorBox.textContent = message;
+  if (message) input.setAttribute('aria-invalid', 'true');
+  else input.removeAttribute('aria-invalid');
+}
+
+/** Removes a field's error as soon as the user starts correcting it, so old messages never linger. */
+function clearErrorWhileEditing(event) {
+  const input = event.target;
+  if (input.getAttribute?.('aria-invalid') !== 'true') return;
+  const errorBox = document.getElementById(input.getAttribute('aria-describedby'));
+  if (errorBox) setInputError(input, errorBox, '');
 }
 
 function showLoadError(error) {
@@ -158,7 +189,8 @@ async function refresh() {
   elements.main.classList.add('is-loading');
 
   try {
-    const [expenses, summary, budgets] = await Promise.all([
+    const [categories, expenses, summary, budgets] = await Promise.all([
+      api.getCategories(),
       api.listExpenses(state.month),
       api.getSummary(state.month),
       api.listBudgets(),
@@ -166,8 +198,12 @@ async function refresh() {
     // Ignore the result if a newer refresh started meanwhile (e.g. the month was changed quickly).
     if (refreshId !== state.refreshId) return;
 
+    state.categories = categories;
+    state.budgets = budgets;
     state.expenses = expenses;
     elements.loadError.hidden = true;
+    renderCategoryOptions();
+    renderCategories();
     renderSummary(summary);
     renderExpenses(expenses);
     renderBudgets(budgets);
@@ -181,21 +217,15 @@ async function refresh() {
   }
 }
 
-async function loadCategories() {
-  state.categories = await api.getCategories();
-  field('categoryId').append(
+/** Rebuilds the category drop-down, keeping the current choice if that category still exists. */
+function renderCategoryOptions() {
+  const select = field('categoryId');
+  const current = select.value;
+  select.replaceChildren(
+    el('option', { value: '', text: 'Choose…' }),
     ...state.categories.map((category) => el('option', { value: category.id, text: category.name })),
   );
-}
-
-async function loadAll() {
-  try {
-    if (state.categories.length === 0) await loadCategories();
-  } catch (error) {
-    showLoadError(error);
-    return;
-  }
-  await refresh();
+  select.value = state.categories.some((category) => String(category.id) === current) ? current : '';
 }
 
 // ---------- Dashboard ----------
@@ -278,6 +308,9 @@ function renderTopCategories(topCategories) {
     el('li', { className: 'top-item' }, [
       el('span', { className: 'top-name', text: category.name }),
       el('span', { className: 'top-amount', text: formatMoney(category.spent) }),
+      el('span', { className: 'top-bar', 'aria-hidden': 'true' }, [
+        el('span', { className: 'top-bar-fill', style: { width: `${category.sharePercent}%` } }),
+      ]),
       el('span', { className: 'top-share', text: `${category.sharePercent}% of this month's spending` }),
     ])));
   elements.topEmpty.hidden = topCategories.length > 0;
@@ -294,7 +327,7 @@ function renderExpenses(expenses) {
     el('tr', { className: expense.id === state.editingId ? 'is-editing' : undefined }, [
       el('td', { className: 'nowrap' }, [el('time', { datetime: expense.date, text: formatDate(expense.date) })]),
       el('td', { className: 'description', text: expense.description }),
-      el('td', { text: expense.categoryName }),
+      el('td', {}, [el('span', { className: 'pill', text: expense.categoryName })]),
       el('td', { className: 'num', text: formatMoney(expense.amount) }),
       el('td', { className: 'actions' }, [
         el('button', {
@@ -380,7 +413,7 @@ function resetForm() {
   setFieldErrors({});
   elements.formHeading.textContent = 'Add expense';
   elements.submit.textContent = 'Add expense';
-  elements.cancelEdit.hidden = true;
+  elements.resetExpense.textContent = 'Clear';
   document.querySelector('tr.is-editing')?.classList.remove('is-editing');
 }
 
@@ -394,7 +427,7 @@ function startEdit(expense) {
 
   elements.formHeading.textContent = 'Edit expense';
   elements.submit.textContent = 'Save changes';
-  elements.cancelEdit.hidden = false;
+  elements.resetExpense.textContent = 'Cancel';
   renderExpenses(state.expenses);
 
   elements.formPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -451,19 +484,24 @@ function renderBudgets(budgets) {
 
     return el('li', {}, [
       el('form', { className: 'budget-row', dataset: { categoryId: category.id }, novalidate: true }, [
-        el('label', { for: inputId, className: 'budget-name', text: category.name }),
-        el('input', {
-          id: inputId,
-          name: 'monthlyLimit',
-          type: 'number',
-          inputmode: 'decimal',
-          step: '0.01',
-          min: '0.01',
-          max: '1000000',
-          placeholder: 'No budget',
-          value: limit === undefined ? undefined : limit.toFixed(2),
-          'aria-describedby': errorId,
-        }),
+        el('label', { for: inputId, className: 'budget-name', text: category.name }, [
+          el('span', { className: 'visually-hidden', text: ' monthly budget in euros' }),
+        ]),
+        el('span', { className: 'input-affix' }, [
+          el('span', { className: 'affix', text: '€', 'aria-hidden': 'true' }),
+          el('input', {
+            id: inputId,
+            name: 'monthlyLimit',
+            type: 'number',
+            inputmode: 'decimal',
+            step: '0.01',
+            min: '0.01',
+            max: '1000000',
+            placeholder: 'No budget',
+            value: limit === undefined ? undefined : limit.toFixed(2),
+            'aria-describedby': errorId,
+          }),
+        ]),
         el('button', {
           type: 'submit',
           className: 'btn btn-small',
@@ -493,10 +531,16 @@ async function handleBudgetSubmit(event) {
   const input = form.elements.namedItem('monthlyLimit');
   const errorBox = form.querySelector('.field-error');
   const value = input.value.trim();
+  const hasBudget = state.budgets.some((budget) => budget.categoryId === categoryId);
 
-  const message = amountError(value);
-  errorBox.textContent = message;
-  input.toggleAttribute('aria-invalid', Boolean(message));
+  // Save on an empty row without a budget (e.g. clicked by mistake) has nothing to do; it is not an error.
+  if (value === '' && !hasBudget) {
+    setInputError(input, errorBox, '');
+    return;
+  }
+
+  const message = value === '' ? 'Enter an amount, or use Remove to delete this budget.' : amountError(value);
+  setInputError(input, errorBox, message);
   if (message) {
     input.focus();
     return;
@@ -508,8 +552,7 @@ async function handleBudgetSubmit(event) {
     await refresh();
   } catch (error) {
     if (error instanceof ApiError && error.code === 'VALIDATION_ERROR') {
-      errorBox.textContent = error.details[0]?.message ?? error.message;
-      input.setAttribute('aria-invalid', 'true');
+      setInputError(input, errorBox, error.details[0]?.message ?? error.message);
     } else {
       showStatus(errorMessage(error), 'error');
     }
@@ -541,11 +584,183 @@ async function handleBudgetRemove(event) {
   await refresh();
 }
 
+// ---------- Categories ----------
+
+const expenseCountText = (count) => (count === 0 ? 'No expenses' : `${count} ${count === 1 ? 'expense' : 'expenses'}`);
+
+function renderCategories() {
+  elements.categoryList.replaceChildren(...state.categories.map((category) => {
+    if (state.renamingId === category.id) {
+      const inputId = `category-name-${category.id}`;
+      const errorId = `${inputId}-error`;
+      return el('li', {}, [
+        el('form', { className: 'category-row is-renaming', dataset: { categoryId: category.id }, novalidate: true }, [
+          el('label', { for: inputId, className: 'visually-hidden', text: `New name for ${category.name}` }),
+          el('input', {
+            id: inputId,
+            className: 'text-input',
+            name: 'name',
+            type: 'text',
+            maxlength: String(MAX_CATEGORY_NAME_LENGTH),
+            autocomplete: 'off',
+            value: category.name,
+            'aria-describedby': errorId,
+          }),
+          el('button', { type: 'submit', className: 'btn btn-small btn-primary', text: 'Save' }),
+          el('button', { type: 'button', className: 'btn btn-small', text: 'Cancel', dataset: { action: 'cancel-rename' } }),
+          el('p', { id: errorId, className: 'field-error' }),
+        ]),
+      ]);
+    }
+
+    return el('li', { className: 'category-row', dataset: { categoryId: category.id } }, [
+      el('span', { className: 'category-name', text: category.name }),
+      el('span', { className: 'category-count', text: expenseCountText(category.expenseCount) }),
+      el('button', {
+        type: 'button',
+        className: 'btn btn-small',
+        text: 'Rename',
+        dataset: { action: 'rename' },
+        'aria-label': `Rename category ${category.name}`,
+      }),
+      el('button', {
+        type: 'button',
+        className: 'btn btn-small btn-danger-outline',
+        text: 'Delete',
+        dataset: { action: 'delete' },
+        'aria-label': `Delete category ${category.name}`,
+      }),
+    ]);
+  }));
+}
+
+function startRename(id) {
+  state.renamingId = id;
+  renderCategories();
+  const input = $(`category-name-${id}`);
+  input.focus();
+  input.select();
+}
+
+function cancelRename(id) {
+  state.renamingId = null;
+  renderCategories();
+  elements.categoryList.querySelector(`[data-category-id="${id}"] [data-action="rename"]`)?.focus();
+}
+
+async function handleCategoryAdd(event) {
+  event.preventDefault();
+  const input = elements.newCategory;
+  const name = normalizeName(input.value);
+  const message = categoryNameError(name);
+  setInputError(input, elements.newCategoryError, message);
+  if (message) {
+    input.focus();
+    return;
+  }
+
+  try {
+    await api.createCategory(name);
+    input.value = '';
+    showStatus(`Category "${name}" added.`);
+    await refresh();
+  } catch (error) {
+    if (error instanceof ApiError && ['VALIDATION_ERROR', 'CONFLICT'].includes(error.code)) {
+      setInputError(input, elements.newCategoryError, error.details[0]?.message ?? error.message);
+      input.focus();
+    } else {
+      showStatus(errorMessage(error), 'error');
+    }
+  }
+}
+
+async function handleCategoryRename(event) {
+  event.preventDefault();
+  const form = event.target;
+  const id = Number(form.dataset.categoryId);
+  const input = form.elements.namedItem('name');
+  const errorBox = form.querySelector('.field-error');
+  const name = normalizeName(input.value);
+  const message = categoryNameError(name);
+  setInputError(input, errorBox, message);
+  if (message) {
+    input.focus();
+    return;
+  }
+
+  const oldName = categoryName(id);
+  try {
+    await api.renameCategory(id, name);
+    state.renamingId = null;
+    showStatus(oldName === name ? 'Category saved.' : `"${oldName}" renamed to "${name}".`);
+    await refresh();
+  } catch (error) {
+    if (error instanceof ApiError && ['VALIDATION_ERROR', 'CONFLICT'].includes(error.code)) {
+      setInputError(input, errorBox, error.details[0]?.message ?? error.message);
+      input.focus();
+    } else if (error instanceof ApiError && error.status === 404) {
+      state.renamingId = null;
+      showStatus('This category no longer exists.', 'error');
+      await refresh();
+    } else {
+      showStatus(errorMessage(error), 'error');
+    }
+  }
+}
+
+async function deleteCategory(category) {
+  // The server enforces this rule too; checking first avoids asking for a confirmation that would fail.
+  if (category.expenseCount > 0) {
+    const them = category.expenseCount === 1 ? 'it' : 'them';
+    showStatus(`"${category.name}" still has ${expenseCountText(category.expenseCount).toLowerCase()}. `
+      + `Move or delete ${them} first.`, 'error');
+    return;
+  }
+
+  const hasBudget = state.budgets.some((budget) => budget.categoryId === category.id);
+  const confirmed = await confirmAction({
+    title: 'Delete category?',
+    message: `"${category.name}" will be deleted${hasBudget ? ' together with its monthly budget' : ''}.`,
+    confirmLabel: 'Delete category',
+  });
+  if (!confirmed) return;
+
+  try {
+    await api.deleteCategory(category.id);
+    showStatus(`Category "${category.name}" deleted.`);
+  } catch (error) {
+    if (error instanceof ApiError && error.code === 'CONFLICT') {
+      showStatus(error.message, 'error');
+    } else if (!(error instanceof ApiError && error.status === 404)) {
+      showStatus(errorMessage(error), 'error');
+      return;
+    }
+  }
+  await refresh();
+}
+
+function handleCategoryClick(event) {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+  const id = Number(button.closest('[data-category-id]').dataset.categoryId);
+  const category = state.categories.find((item) => item.id === id);
+  if (!category) return;
+
+  if (button.dataset.action === 'rename') startRename(id);
+  else if (button.dataset.action === 'cancel-rename') cancelRename(id);
+  else if (button.dataset.action === 'delete') deleteCategory(category);
+}
+
 // ---------- Start-up ----------
 
 function bindEvents() {
+  document.addEventListener('input', clearErrorWhileEditing);
   elements.form.addEventListener('submit', handleExpenseSubmit);
-  elements.cancelEdit.addEventListener('click', resetForm);
+  // "Clear" while adding, "Cancel" while editing: both empty the form and return to add mode.
+  elements.resetExpense.addEventListener('click', () => {
+    resetForm();
+    field('amount').focus();
+  });
 
   elements.expenseRows.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-action]');
@@ -559,15 +774,23 @@ function bindEvents() {
   elements.budgetList.addEventListener('submit', handleBudgetSubmit);
   elements.budgetList.addEventListener('click', handleBudgetRemove);
 
+  elements.categoryForm.addEventListener('submit', handleCategoryAdd);
+  elements.categoryList.addEventListener('submit', handleCategoryRename);
+  elements.categoryList.addEventListener('click', handleCategoryClick);
+  elements.categoryList.addEventListener('keydown', (event) => {
+    const form = event.target.closest('form.is-renaming');
+    if (event.key === 'Escape' && form) cancelRename(Number(form.dataset.categoryId));
+  });
+
   elements.month.addEventListener('change', () => {
     if (MONTH_PATTERN.test(elements.month.value)) setMonth(elements.month.value);
   });
   $('prev-month').addEventListener('click', () => setMonth(shiftMonth(state.month, -1)));
   $('next-month').addEventListener('click', () => setMonth(shiftMonth(state.month, 1)));
-  $('retry').addEventListener('click', loadAll);
+  $('retry').addEventListener('click', refresh);
 }
 
 bindEvents();
 showMonth(state.month);
 field('date').value = todayIso();
-loadAll();
+refresh();

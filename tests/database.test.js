@@ -50,6 +50,33 @@ describe('openDatabase', () => {
     assert.equal(count, DEFAULT_CATEGORIES.length);
   });
 
+  it('adds the default categories only once, so deleted ones stay deleted', () => {
+    db.prepare("DELETE FROM categories WHERE name = 'Education'").run();
+    db.close();
+    db = openDatabase(temp.dbPath);
+
+    const names = db.prepare('SELECT name FROM categories').all().map((row) => row.name);
+    assert.equal(names.includes('Education'), false);
+    assert.equal(names.length, DEFAULT_CATEGORIES.length - 1);
+  });
+
+  it('upgrades a database created before seeding was tracked without duplicating categories', () => {
+    // Databases created by earlier versions of the app have user_version 0 and all default categories.
+    db.pragma('user_version = 0');
+    db.close();
+    db = openDatabase(temp.dbPath);
+
+    const { count } = db.prepare('SELECT COUNT(*) AS count FROM categories').get();
+    assert.equal(count, DEFAULT_CATEGORIES.length);
+    assert.equal(db.pragma('user_version', { simple: true }), 1);
+  });
+
+  it('rejects category names that differ only in upper/lower case', () => {
+    assert.throws(() => db.prepare("INSERT INTO categories (name) VALUES ('FOOD')").run(), {
+      code: 'SQLITE_CONSTRAINT_UNIQUE',
+    });
+  });
+
   it('creates a missing parent folder for the database file', () => {
     const nestedPath = join(temp.dir, 'nested', 'folder', 'app.db');
     const nestedDb = openDatabase(nestedPath);

@@ -43,6 +43,9 @@ const query = (month) => `?month=${encodeURIComponent(month)}`;
 
 export const api = {
   getCategories: () => request('GET', '/categories'),
+  createCategory: (name) => request('POST', '/categories', { name }),
+  renameCategory: (id, name) => request('PUT', `/categories/${id}`, { name }),
+  deleteCategory: (id) => request('DELETE', `/categories/${id}`),
   listExpenses: (month) => request('GET', `/expenses${query(month)}`),
   createExpense: (expense) => request('POST', '/expenses', expense),
   updateExpense: (id, expense) => request('PUT', `/expenses/${id}`, expense),

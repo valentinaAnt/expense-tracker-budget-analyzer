@@ -4,6 +4,7 @@ import {
   isValidDate,
   isValidMonth,
   monthRange,
+  normalizeCategoryName,
   normalizeDescription,
   parseId,
   toCents,
@@ -72,6 +73,19 @@ describe('parseId', () => {
   it('rejects everything else', () => {
     for (const value of [0, -1, 1.5, '0', '01', '1.5', 'abc', '', '99999999999999999', null, undefined]) {
       assert.equal(parseId(value), null, `expected ${JSON.stringify(value)} to be rejected`);
+    }
+  });
+});
+
+describe('normalizeCategoryName', () => {
+  it('trims and collapses inner whitespace', () => {
+    assert.equal(normalizeCategoryName('  Pet \t  care  '), 'Pet care');
+    assert.equal(normalizeCategoryName('x'.repeat(40)), 'x'.repeat(40));
+  });
+
+  it('rejects empty, too long and non-string values', () => {
+    for (const value of ['', '  ', 'x'.repeat(41), 7, null]) {
+      assert.equal(normalizeCategoryName(value), null, `expected ${JSON.stringify(value)} to be rejected`);
     }
   });
 });
