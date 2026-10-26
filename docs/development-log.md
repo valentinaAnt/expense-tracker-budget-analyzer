@@ -996,4 +996,42 @@ The student answered "leave it". The browser check stays a scratch script, and t
 - Repeat the clean-copy check after this commit.
 - The report grew to about 3,500 words; compile it in Overleaf and check the page count.
 
+**Commit:** `ed700af` — `feat: category filter, CSV export, move expenses on category delete, 6-month trend, phone layout`
+(committed and pushed by the student).
+
+---
+
+## Entry 25 — Final clean-copy check and a security update (2026-10-26)
+
+**Prompt used:** "i have pushed it"
+
+**Verification by Claude (actual results):**
+
+- `git status -sb` showed `## main...origin/main` (in sync). Head: `ed700af`.
+- The committed state was cloned into the session's scratch folder (`git clone .`). The clone held only
+  `data/.gitkeep`, no database. Then:
+  - `npm ci` completed;
+  - `npm test`: **124 tests, 26 suites, 124 pass, 0 fail**;
+  - the server started on port 3187: `/api/health` → `{"status":"ok","database":"ok"}`;
+  - `/api/analytics/trend` returned 6 months;
+  - `/api/expenses/export` → `text/csv; charset=utf-8`.
+
+  The clone was deleted afterwards.
+- **Problem found:** `npm ci` ended with "Run `npm audit` for details" instead of "found 0 vulnerabilities".
+  `npm audit` reported:
+  - 1 high-severity vulnerability: `body-parser 2.0.0 - 2.3.0`, "Denial of Service via trailing bytes after a
+    compressed request body" (GHSA-27r3-jxmh-p828);
+  - `body-parser` is a dependency of `express@5.3.0`.
+
+  This is a new advisory: the same lock file reported 0 vulnerabilities on 2026-10-23 (Entry 19). The practical risk
+  for this app is low, because it listens only on `127.0.0.1`.
+- **Fix:**
+  - `npm audit fix` changed only `package-lock.json` (6 lines): `body-parser` 2.3.0 → 2.4.0, within the range Express
+    allows;
+  - `npm audit` → **found 0 vulnerabilities**;
+  - `npm test` → **124/124 pass**, including the `INVALID_JSON` and 413 body tests that exercise `body-parser`.
+
+**Documentation:** the report's testing paragraph now describes this final clean-copy check (124 tests) and the
+security update, instead of the earlier 105-test check.
+
 **Commit:** pending.

@@ -480,13 +480,16 @@ that data survives a restart. The final run reported 124 passed and 0
 failed, with 97.6\,\% line and 97.3\,\% branch coverage (the uncovered
 code is mainly the Ctrl+C shutdown handler). The same deliberate-bug
 check was repeated for the new features: a trend window one month off and
-a deletion that skipped moving the expenses were both caught. Before the
-last features, the committed project was cloned into an empty folder and
-set up as the README describes: \texttt{npm ci} reported 0
-vulnerabilities, all 105 tests at that time passed, and the server
-answered \texttt{/api/health} with
-\texttt{\{"status":"ok","database":"ok"\}}, confirming that nothing
-needed to run the project was missing from Git.
+a deletion that skipped moving the expenses were both caught. As a last
+step the committed project was cloned into an empty folder and set up as
+the README describes: all 124 tests passed, and the server answered
+\texttt{/api/health} with \texttt{\{"status":"ok","database":"ok"\}},
+confirming that nothing needed to run the project was missing from Git.
+This check also revealed a new high-severity advisory for
+\texttt{body-parser}, which Express uses to read JSON (an earlier check
+had reported 0 vulnerabilities); \texttt{npm audit fix} updated it from
+2.3.0 to 2.4.0, after which \texttt{npm audit} reported 0 vulnerabilities
+and all tests passed again.
 
 \textbf{AI Tool Choice.} Claude executed the tests and reported failures
 instead of claiming success.
