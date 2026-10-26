@@ -1179,4 +1179,116 @@ instead, and the student asked for those.
 **Verification:** `npm test`: 124/124 pass. Claude did not check the change in a browser; the student reviews it
 in the running app.
 
-**Commit:** pending. The student will keep or discard this change after looking at it.
+**Commit:** `085d82e` — `UI changes` (committed by the student, who kept the change).
+
+---
+
+## Entry 31 — Tabs for the three page sections (2026-10-26)
+
+**Prompt used:**
+
+```
+can we add tabs or whatever so it looks more beautiful and proffesional
+```
+
+**Change:**
+
+- `public/index.html`: a tab bar in the header with Overview, Expenses and Budgets & categories. It uses the WAI-ARIA
+  tabs roles (`tablist`, `tab`, `tabpanel`). The three page sections became the tab panels, and only Overview is
+  shown at the start.
+- `public/js/app.js`:
+  - `showTab` shows one section and marks its tab;
+  - the open tab is kept in the URL hash (`#expenses`), so reloading keeps it and the browser's Back button returns
+    to the previous tab;
+  - Arrow keys, Home and End move between tabs;
+  - small counts after the tab names: the month's expenses on Expenses, and categories over budget (in rose, hidden
+    at 0) on Budgets & categories.
+- `public/css/styles.css`:
+  - the tabs are a segmented control in the same style as the month picker;
+  - on wide screens they sit between the title and the month picker; below 1120 px they get their own row; on phones
+    they show short labels without icons;
+  - the header is no longer sticky on phones (≤ 520 px), where it would now take three rows;
+  - a short fade-in when a section is shown.
+- Fixed a pre-existing layout bug: `main`'s top and bottom padding was overridden by `.container`, so the content
+  started right under the header. The rule is now `main.container`.
+
+**Verification by Claude (actual results):**
+
+- Scratch browser script in headless Edge, extended with tab checks, against a scratch database: **54/54 + 4/4 +
+  6/6 passed**. The tab checks were: start state, both counts against the summary cards, click, Arrow/Home/End,
+  Back button, opening `#budgets` directly, and layout at 1280, 1120, 1000, 390 and 360 px (no horizontal overflow,
+  tabs fit, 32 px gap under the header). The only browser log entry was the expected 409 from the duplicate-category
+  step.
+- The first run's screenshots showed a double space in "Budgets & categories", tabs wider than a 390 px screen, and
+  the missing padding. All three were fixed before the second run.
+- `npm test`: 124/124 pass.
+
+**Note:** the report's screenshots (`main-light-*.png`, `main-dark-*.png`) show the page before tabs. If this
+change is kept, the screenshots and the report's description of the dashboard need updating.
+
+**Commit:** pending.
+
+---
+
+## Entry 32 — Fix: the trend lost the current month after clicking an earlier month (2026-10-26)
+
+**Prompt used:**
+
+```
+if i click on a month from "last 6 monsts" it not giving me a chance to return to the current month from there
+```
+
+**Cause:** the trend always ended at the selected month. Clicking September moved the window back to April–September,
+so October was no longer in the chart.
+
+**Change (`public/js/app.js`):** a new `trendEndMonth`. While the selected month is one of the five months before the
+current month, the trend still ends at the current month, so the same six bars stay in view and the current month is
+one click away. Older months and future months still end the trend themselves. The server and the API are unchanged.
+
+**Verification by Claude (actual results):** new browser checks:
+
+- after clicking September, the trend is still May–October with September selected;
+- clicking the October bar returns to October;
+- clicking the oldest bar (May) keeps October in view;
+- March 2026 (seven months back) shows October 2025 – March 2026.
+
+The whole script then passed (58/58 + 4/4 + 6/6).
+
+**Commit:** pending.
+
+---
+
+## Entry 33 — Spending in categories without a budget (2026-10-26)
+
+**Prompt used:**
+
+```
+also, when i have an expenses from a category but a dont have a budget, ithink that it has to be handled better
+```
+
+**Problems found by Claude:**
+
+- The cards did not add up: with a €570.00 budget and €485.49 spent, "Budget left" showed €110.50. The €25.99 spent
+  on Shopping, which has no budget, was left out without saying so.
+- In "Spending by category", the unbudgeted bar was mixed in with the budget bars, although it is scaled
+  differently (spending compared with other categories, not budget use).
+- The only text was "No budget set", with no quick way to set one.
+
+**Change (`public/js/app.js`, `public/css/styles.css`):**
+
+- Spent card note: "6 expenses · €25.99 without a budget".
+- Budget left card note: "not counting €25.99 without a budget". The note stays "across budgeted categories" when all
+  spending has a budget.
+- The chart shows budgeted categories first, then a "Spending without a budget" label with the other categories
+  under it.
+- Each unbudgeted row shows its number of expenses and a "Set a budget" button. The button opens the Budgets tab with
+  that category's budget field focused.
+- Tab switching now goes through one `openTab` function (`history.pushState`), so this button and the tab clicks
+  share the same Back-button behaviour.
+
+**Verification by Claude (actual results):** new browser checks: both card notes, the chart order and group label,
+the "1 expense · Set a budget" row, the button opening Budgets with `budget-7` (Shopping) focused, and Back returning
+to Overview. The whole script passed (**64/64 + 4/4 + 6/6**); the only browser log entry is the expected 409 from the
+duplicate-category step. `npm test`: 124/124 pass. Claude also looked at the Overview screenshot.
+
+**Commit:** pending.

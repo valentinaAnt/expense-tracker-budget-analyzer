@@ -26,6 +26,26 @@
         </span>
         <h1 class="app-title">Expense Tracker <span>&amp; Budget Analyzer</span></h1>
       </div>
+      <!-- Tabs: one page section is shown at a time; the open tab is kept in the URL (#expenses). -->
+      <div class="tabs" role="tablist" aria-label="Sections">
+        <button type="button" class="tab" role="tab" id="tab-overview" data-tab="overview"
+                aria-controls="panel-overview" aria-selected="true">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+          Overview
+        </button>
+        <button type="button" class="tab" role="tab" id="tab-expenses" data-tab="expenses"
+                aria-controls="panel-expenses" aria-selected="false" tabindex="-1">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
+          Expenses
+          <span class="tab-count" id="tab-expenses-count" hidden></span>
+        </button>
+        <button type="button" class="tab" role="tab" id="tab-budgets" data-tab="budgets"
+                aria-controls="panel-budgets" aria-selected="false" tabindex="-1">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+          <span>Budgets<span class="tab-long"> &amp; categories</span></span>
+          <span class="tab-count is-over" id="tab-budgets-count" hidden></span>
+        </button>
+      </div>
       <div class="header-actions">
         <div class="month-picker" role="group" aria-label="Selected month">
           <button type="button" class="btn btn-ghost btn-icon" id="prev-month" aria-label="Previous month">
@@ -54,7 +74,7 @@
       <button type="button" class="btn" id="retry">Retry</button>
     </div>
 
-    <section class="page-section" aria-labelledby="summary-heading">
+    <section class="page-section" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
       <div class="page-heading">
         <h2 id="summary-heading" class="section-title">Overview for <span class="month-label">…</span></h2>
         <p class="section-subtitle">All figures are calculated from your recorded expenses and budgets.</p>
@@ -137,7 +157,7 @@
       </div>
     </section>
 
-    <section class="page-section" aria-labelledby="expenses-section-heading">
+    <section class="page-section" id="panel-expenses" role="tabpanel" aria-labelledby="tab-expenses" hidden>
       <div class="page-heading">
         <h2 id="expenses-section-heading" class="section-title">Expenses</h2>
         <p class="section-subtitle">Record what you spend, and edit or delete past entries.</p>
@@ -225,7 +245,7 @@
       </div>
     </section>
 
-    <section class="page-section" aria-labelledby="settings-heading">
+    <section class="page-section" id="panel-budgets" role="tabpanel" aria-labelledby="tab-budgets" hidden>
       <div class="page-heading">
         <h2 id="settings-heading" class="section-title">Budgets and categories</h2>
         <p class="section-subtitle">Settings that apply to every month.</p>

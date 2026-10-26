@@ -207,6 +207,73 @@ button, input, select {
   gap: 0.5rem;
 }
 
+/* Tabs: a segmented control in the same style as the month picker; the open tab is raised. */
+.tabs {
+  display: flex;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  height: 2.2rem;
+  padding: 0 0.85rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-selected="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.tab[aria-selected="true"] .icon {
+  color: var(--accent-text);
+}
+
+/* Small number after a tab name: expenses this month, or categories over budget. */
+.tab-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.tab[aria-selected="true"] .tab-count {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.tab-count.is-over,
+.tab[aria-selected="true"] .tab-count.is-over {
+  background: var(--over-soft);
+  color: var(--over);
+}
+
 /* Theme switch: the moon switches to dark, the sun switches back to light. */
 .theme-toggle {
   width: 2.7rem;
@@ -251,7 +318,8 @@ button, input, select {
 }
 
 /* ---------- Layout ---------- */
-main {
+/* main.container, so the vertical padding is not overridden by .container's padding. */
+main.container {
   display: grid;
   gap: 2.25rem;
   padding-top: 2rem;
@@ -263,15 +331,15 @@ main.is-loading {
   opacity: 0.55;
 }
 
-/* Three page sections: overview, expenses, budgets and categories. */
+/* Three page sections, one per tab: overview, expenses, budgets and categories. */
 .page-section {
   display: grid;
   gap: 1.5rem;
+  animation: fade-in 0.25s ease both;
 }
 
-.page-section + .page-section {
-  padding-top: 2.25rem;
-  border-top: 1px solid var(--border);
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
 }
 
 .page-heading {
@@ -524,6 +592,32 @@ main.is-loading {
 .bar-detail {
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+/* Label above the categories that have spending but no budget. */
+.bar-group {
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border-strong);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 550;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* A button that looks like a link, e.g. "Set a budget" in the chart. */
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font-size: inherit;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
 }
 
 .status-warning .bar-detail { color: var(--warning); }
@@ -1127,6 +1221,7 @@ a.btn {
 
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
+  .page-section,
   .bar-fill,
   .top-bar-fill,
   .trend-bar {
@@ -1139,6 +1234,22 @@ a.btn {
 }
 
 /* ---------- Responsive ---------- */
+/* Below this width the tabs move to their own row under the title, so the header is taller. */
+@media (max-width: 1120px) {
+  .tabs {
+    order: 3;
+    width: 100%;
+  }
+
+  .tab {
+    flex: 1;
+  }
+
+  .grid-form-list > #expense-form-panel {
+    top: 9.5rem;
+  }
+}
+
 @media (max-width: 900px) {
   .grid-2,
   .grid-wide-left,
@@ -1156,8 +1267,24 @@ a.btn {
     padding: 0 1rem;
   }
 
+  /* With title, month picker and tabs on three rows, a sticky header would cover too much of a phone screen. */
+  .app-header {
+    position: static;
+  }
+
   .header-inner {
     justify-content: center;
+  }
+
+  /* Short labels without icons, so the three tabs fit side by side on a phone. */
+  .tab {
+    min-width: 0;
+    padding: 0 0.4rem;
+  }
+
+  .tab .icon,
+  .tab-long {
+    display: none;
   }
 
   .section-title {

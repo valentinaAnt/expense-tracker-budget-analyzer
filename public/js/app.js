@@ -208,7 +208,7 @@ async function refresh() {
       api.listExpenses(state.month, state.filterCategoryId),
       api.getSummary(state.month),
       api.listBudgets(),
-      api.getTrend(state.month),
+      api.getTrend(trendEndMonth(state.month)),
     ]);
     // Ignore the result if a newer refresh started meanwhile (e.g. the month was changed quickly).
     if (refreshId !== state.refreshId) return;
@@ -255,9 +255,15 @@ function renderSummary(summary) {
   const budgeted = summary.categories.filter((category) => category.budget !== null);
   const remainingCents = budgeted.reduce((sum, category) => sum + toCents(category.remaining), 0);
   const overCount = budgeted.filter((category) => category.status === 'over').length;
+  // Spending in categories without a budget is in "Spent" but not in the budget figures; the notes say so.
+  const unbudgetedCents = summary.categories
+    .filter((category) => category.budget === null)
+    .reduce((sum, category) => sum + toCents(category.spent), 0);
+  const unbudgetedNote = unbudgetedCents > 0 ? ` · ${formatMoney(unbudgetedCents / 100)} without a budget` : '';
 
   $('card-spent').textContent = formatMoney(summary.totalSpent);
-  $('card-spent-note').textContent = `${summary.expenseCount} ${summary.expenseCount === 1 ? 'expense' : 'expenses'}`;
+  $('card-spent-note').textContent =
+    `${summary.expenseCount} ${summary.expenseCount === 1 ? 'expense' : 'expenses'}${unbudgetedNote}`;
 
   $('card-budget').textContent = budgeted.length > 0 ? formatMoney(summary.totalBudget) : '–';
   $('card-budget-note').textContent = budgeted.length > 0
@@ -277,19 +283,31 @@ function renderSummary(summary) {
   } else {
     $('card-remaining-title').textContent = 'Budget left';
     $('card-remaining').textContent = formatMoney(remainingCents / 100);
-    $('card-remaining-note').textContent = 'across budgeted categories';
+    $('card-remaining-note').textContent = unbudgetedCents > 0
+      ? `not counting ${formatMoney(unbudgetedCents / 100)} without a budget`
+      : 'across budgeted categories';
   }
 
   $('card-over').textContent = String(overCount);
   $('card-over-note').textContent = overCount === 1 ? 'category' : 'categories';
   $('card-over').closest('.card').classList.toggle('is-negative', overCount > 0);
 
+  setTabCount('tab-expenses-count', summary.expenseCount, '');
+  setTabCount('tab-budgets-count', overCount, ' over budget');
+
   renderChart(summary.categories);
   renderTopCategories(summary.topCategories);
 }
 
 function budgetDetail(category) {
-  if (category.budget === null) return 'No budget set';
+  if (category.budget === null) {
+    // Spending without a budget: say how many expenses, and offer to set a budget for the category.
+    return [
+      `${category.expenseCount} ${category.expenseCount === 1 ? 'expense' : 'expenses'} · `,
+      el('button', { type: 'button', className: 'link-button', dataset: { setBudget: category.categoryId },
+        text: 'Set a budget', 'aria-label': `Set a budget for ${category.name}` }),
+    ];
+  }
   if (category.status === 'over') {
     return `${formatMoney(-category.remaining)} over budget · ${category.percentUsed}% used`;
   }
@@ -297,10 +315,16 @@ function budgetDetail(category) {
   return `${formatMoney(category.remaining)} left · ${category.percentUsed}% used${note}`;
 }
 
+/**
+ * Budgeted categories first; categories with spending but no budget follow under their own label,
+ * because their bars compare spending between categories rather than showing budget use.
+ */
 function renderChart(categories) {
   const maxSpent = Math.max(0, ...categories.map((category) => category.spent));
+  const budgeted = categories.filter((category) => category.budget !== null);
+  const unbudgeted = categories.filter((category) => category.budget === null);
 
-  elements.chart.replaceChildren(...categories.map((category) => {
+  const barItem = (category) => {
     const hasBudget = category.budget !== null;
     // Budgeted categories show budget usage; others show spending relative to the largest category.
     const width = hasBudget
@@ -318,9 +342,15 @@ function renderChart(categories) {
       el('div', { className: 'bar-track', 'aria-hidden': 'true' }, [
         el('div', { className: 'bar-fill', style: { width: `${width}%` } }),
       ]),
-      el('p', { className: 'bar-detail', text: budgetDetail(category) }),
+      el('p', { className: 'bar-detail' }, [].concat(budgetDetail(category))),
     ]);
-  }));
+  };
+
+  elements.chart.replaceChildren(
+    ...budgeted.map(barItem),
+    ...(unbudgeted.length > 0 ? [el('li', { className: 'bar-group', text: 'Spending without a budget' })] : []),
+    ...unbudgeted.map(barItem),
+  );
   elements.chartEmpty.hidden = categories.length > 0;
 }
 
@@ -338,7 +368,17 @@ function renderTopCategories(topCategories) {
 }
 
 /**
- * Column chart of the last six months. Bars are scaled to the largest month or the monthly budget,
+ * Last month shown in the trend: the current month while the selected month is one of the five before it,
+ * so clicking an earlier bar keeps the same six months in view and the current month stays one click away.
+ * Older or future months end the trend themselves.
+ */
+function trendEndMonth(month) {
+  const current = toMonth(new Date());
+  return month < current && month >= shiftMonth(current, -5) ? current : month;
+}
+
+/**
+ * Column chart of six months. Bars are scaled to the largest month or the monthly budget,
  * whichever is higher; a dashed line marks the budget. Clicking a bar opens that month.
  */
 function renderTrend({ months, monthlyBudget }) {
@@ -836,6 +876,63 @@ function handleCategoryClick(event) {
   else if (button.dataset.action === 'delete') deleteCategory(category);
 }
 
+// ---------- Tabs ----------
+
+const TAB_NAMES = ['overview', 'expenses', 'budgets'];
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+
+/** Shows one page section and marks its tab; only the open tab is reachable with the Tab key. */
+function showTab(name) {
+  for (const tab of tabs) {
+    const selected = tab.dataset.tab === name;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    $(tab.getAttribute('aria-controls')).hidden = !selected;
+  }
+}
+
+/**
+ * Opens a tab from a click or a link inside the page. The hash is added as a history entry,
+ * so the browser's Back button returns to the previous tab (via the hashchange listener).
+ */
+function openTab(name) {
+  if (location.hash !== `#${name}`) history.pushState(null, '', `#${name}`);
+  showTab(name);
+  window.scrollTo(0, 0);
+}
+
+/** Opens the Budgets tab with the budget field of one category focused. */
+function openBudget(categoryId) {
+  openTab('budgets');
+  const input = $(`budget-${categoryId}`);
+  input?.focus({ preventScroll: true });
+  input?.scrollIntoView({ block: 'center' });
+}
+
+/** The tab named in the URL (#expenses), or null; other hashes such as the skip link's #main are ignored. */
+function tabFromHash() {
+  const name = location.hash.slice(1);
+  return TAB_NAMES.includes(name) ? name : null;
+}
+
+/** Number shown after a tab name; hidden when it is 0. `suffix` is read by screen readers only. */
+function setTabCount(id, count, suffix) {
+  const badge = $(id);
+  badge.hidden = count === 0;
+  badge.replaceChildren(String(count), ...(suffix ? [el('span', { className: 'visually-hidden', text: suffix })] : []));
+}
+
+/** Arrow keys, Home and End move between tabs, as in the WAI-ARIA tabs pattern. */
+function handleTabKeys(event) {
+  const index = tabs.indexOf(event.target);
+  const target = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: tabs.length - 1 }[event.key];
+  if (index === -1 || target === undefined) return;
+  event.preventDefault();
+  const tab = tabs[(target + tabs.length) % tabs.length];
+  tab.focus();
+  tab.click();
+}
+
 // ---------- Theme ----------
 
 const THEME_KEY = 'theme';
@@ -908,9 +1005,25 @@ function bindEvents() {
   $('next-month').addEventListener('click', () => setMonth(shiftMonth(state.month, 1)));
   $('retry').addEventListener('click', refresh);
   themeToggle.addEventListener('click', toggleTheme);
+
+  for (const tab of tabs) {
+    tab.addEventListener('click', () => openTab(tab.dataset.tab));
+  }
+  elements.chart.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-set-budget]');
+    if (button) openBudget(button.dataset.setBudget);
+  });
+  tabs[0].parentElement.addEventListener('keydown', handleTabKeys);
+  window.addEventListener('hashchange', () => {
+    const name = tabFromHash();
+    if (!name) return;
+    showTab(name);
+    window.scrollTo(0, 0);
+  });
 }
 
 applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+showTab(tabFromHash() ?? 'overview');
 bindEvents();
 showMonth(state.month);
 field('date').value = todayIso();
