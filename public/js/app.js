@@ -556,8 +556,9 @@ function renderBudgets(budgets) {
             name: 'monthlyLimit',
             type: 'number',
             inputmode: 'decimal',
-            step: '0.01',
-            min: '0.01',
+            // Arrows step by €0.10, counted from 0; typed amounts may still have cents.
+            step: '0.10',
+            min: '0',
             max: '1000000',
             placeholder: 'No budget',
             value: limit === undefined ? undefined : limit.toFixed(2),

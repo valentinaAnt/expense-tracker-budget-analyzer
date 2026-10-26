@@ -1086,3 +1086,30 @@ All matched except one sentence: "All endpoints … use JSON" is not true for `G
 CSV. It now says "(except the CSV export)".
 
 **Commit:** pending.
+
+---
+
+## Entry 28 — Budget arrows step by €0.10 too (2026-10-26)
+
+**Prompt used:**
+
+```
+Budgets and categories i want its amount also to be changed by 0.1
+```
+
+**Change:** only the budget fields have amounts; categories are just names. The budget inputs created in
+`public/js/app.js` (`renderBudgets`) changed from `step: '0.01', min: '0.01'` to `step: '0.10', min: '0'`, for the same
+reason as in Entry 26.
+
+**Verification by Claude (actual results):**
+
+- Real arrow-key presses in headless Edge:
+  - Health (no budget), ↑ ×3 → `0.3`; ↓ ×5 → `0`;
+  - Food 300.00, ↑ ×2 → `300.2`;
+  - typed `250.55`, ↓ → `250.5`.
+- Saving a typed `250.55` with the Save button: the field shows `250.55`, the card shows €250.55 and the message is
+  "Budget for Food saved.".
+- The full scratch browser script: **46/46 + 4/4 passed**, including the invalid-budget and saved-budget steps.
+- `npm test`: 124/124 pass.
+
+**Commit:** pending.
