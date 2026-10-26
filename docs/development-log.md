@@ -1034,7 +1034,7 @@ The student answered "leave it". The browser check stays a scratch script, and t
 **Documentation:** the report's testing paragraph now describes this final clean-copy check (124 tests) and the
 security update, instead of the earlier 105-test check.
 
-**Commit:** pending.
+**Commit:** `93ea169` (committed and pushed by the student).
 
 ---
 
@@ -1085,7 +1085,7 @@ compared with the code and the latest results:
 All matched except one sentence: "All endpoints … use JSON" is not true for `GET /api/expenses/export`, which returns
 CSV. It now says "(except the CSV export)".
 
-**Commit:** pending.
+**Commit:** `8265ece` — `docs: README note on the CSV export format` (committed and pushed by the student).
 
 ---
 
@@ -1111,5 +1111,40 @@ reason as in Entry 26.
   "Budget for Food saved.".
 - The full scratch browser script: **46/46 + 4/4 passed**, including the invalid-budget and saved-budget steps.
 - `npm test`: 124/124 pass.
+
+**Commit:** `81d7176` — `feat: budget arrows step by 0.10; README note on CSV export` (committed and pushed by the
+student).
+
+---
+
+## Entry 29 — New screenshots in the report (2026-10-26)
+
+**Prompt used:**
+
+```
+i have added my 5 screenshors. before, where i have added the first one, now i want main 4 pictures, and the tests-change it
+```
+
+**Evidence (taken by the student):** five new files in `report/`. They replace `01-dashboard.png` and `04-tests.png`,
+which the student deleted.
+
+- `main-light-1.png`, `main-light-2.png`: the top and bottom of the main page in the light theme, October 2026.
+  The page shows spent €22.00, monthly budget €340.00, budget left €318.00 and 0 categories over budget.
+- `main-dark-1.png`, `main-dark-2.png`: the same views in the dark theme.
+- `tests.png`: the end of `npm test`: tests 124, suites 26, pass 124, fail 0.
+
+Claude opened each image before writing its caption.
+
+**Change:**
+
+- `report/main.tex`:
+  - added the `subcaption` package;
+  - Screenshot 1 is now "Main Page in Light and Dark Theme": a 2×2 grid (light on top, dark below) with one caption
+    per picture and an overall caption that gives the figures shown;
+  - Screenshot 2 now uses `tests.png`. The caption (124 tests in 26 suites, 124 passed, 0 failed) matches the image.
+- `README.md`: the Overleaf instructions list the five new screenshot files.
+
+**Verification:** the scratch LaTeX structure check passed: braces balanced, environments matched, 0 TODOs. LaTeX
+is not installed locally, so the student compiles the report in Overleaf.
 
 **Commit:** pending.

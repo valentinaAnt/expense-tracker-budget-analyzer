@@ -11,6 +11,7 @@
 \usepackage{xcolor}
 \usepackage{graphicx}
 \usepackage{float}
+\usepackage{subcaption}
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{tikz}
@@ -572,14 +573,44 @@ have since been built.)
 The following screenshots were taken from the running application and
 the test suite on the student's computer.
 
-\subsection{Screenshot 1: Main Dashboard}
+\subsection{Screenshot 1: Main Page in Light and Dark Theme}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{01-dashboard.png}
-    \caption{Dashboard for October 2026: summary cards, spending by
-    category against each budget, the top categories, the expense form
-    with \emph{Clear}, the monthly budgets, and the categories panel.}
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{main-light-1.png}
+        \caption{Light theme, top: overview cards, spending by category,
+        top categories, the last 6 months and the start of
+        \emph{Expenses}.}
+        \label{fig:main-light-1}
+    \end{subfigure}\hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{main-light-2.png}
+        \caption{Light theme, bottom: the expense form and list, the
+        monthly budgets and the categories.}
+        \label{fig:main-light-2}
+    \end{subfigure}
+
+    \medskip
+
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{main-dark-1.png}
+        \caption{Dark theme, top (the same page after clicking the moon
+        button).}
+        \label{fig:main-dark-1}
+    \end{subfigure}\hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{main-dark-2.png}
+        \caption{Dark theme, bottom.}
+        \label{fig:main-dark-2}
+    \end{subfigure}
+    \caption{Main page for October 2026 (spent \texteuro22.00 of a
+    \texteuro340.00 monthly budget, 0 categories over budget), in the
+    light and the dark theme.}
     \label{fig:dashboard}
 \end{figure}
 
@@ -587,7 +618,7 @@ the test suite on the student's computer.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\textwidth]{04-tests.png}
+    \includegraphics[width=0.75\textwidth]{tests.png}
     \caption{End of the \texttt{npm test} output: 124 tests in 26
     suites, 124 passed, 0 failed.}
     \label{fig:tests}

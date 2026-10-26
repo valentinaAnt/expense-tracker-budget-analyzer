@@ -101,7 +101,7 @@ report/     main.tex (LaTeX project report)
 - [`docs/development-log.md`](docs/development-log.md) — the actual prompts, changes, test results and commits.
 - [`report/main.tex`](report/main.tex) — the project report as a LaTeX file.
 
-**Compiling the report in Overleaf:** New Project → Upload Project → upload `report/main.tex` together with the two
-screenshots in `report/` (`01-dashboard.png`, `04-tests.png`), check that the compiler is **pdfLaTeX**, then click
-**Recompile** and **Download PDF**.
+**Compiling the report in Overleaf:** New Project → Upload Project → upload `report/main.tex` together with the five
+screenshots in `report/` (`main-light-1.png`, `main-light-2.png`, `main-dark-1.png`, `main-dark-2.png`, `tests.png`),
+check that the compiler is **pdfLaTeX**, then click **Recompile** and **Download PDF**.
 Locally (with MiKTeX or TeX Live): run `pdflatex main.tex` twice in the `report` folder.
