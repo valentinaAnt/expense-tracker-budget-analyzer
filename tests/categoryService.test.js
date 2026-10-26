@@ -123,6 +123,40 @@ describe('categoryService', () => {
     it('reports an unknown category as not found', () => {
       assert.throws(() => categories.remove(999), NotFoundError);
     });
+
+    it('moves the expenses to another category, then deletes the category and its budget', () => {
+      const { id } = categories.create({ name: 'Pets' });
+      addExpense(id, 30);
+      addExpense(id, 12.5);
+      addExpense(FOOD, 5);
+      budgets.set(id, { monthlyLimit: 40 });
+
+      assert.equal(categories.remove(id, { moveTo: String(FOOD) }), 2);
+      assert.equal(categories.exists(id), false);
+      assert.deepEqual(budgets.list(), []);
+      const food = expenses.list({ categoryId: FOOD });
+      assert.deepEqual(food.map((e) => e.amount).sort((a, b) => a - b), [5, 12.5, 30]);
+      assert.ok(food.every((e) => e.categoryName === 'Food'));
+    });
+
+    it('rejects an invalid, unknown or identical target and changes nothing', () => {
+      const { id } = categories.create({ name: 'Pets' });
+      addExpense(id);
+      const cases = [
+        ['abc', 'Target category ID must be a positive integer'],
+        [999, 'Target category does not exist'],
+        [id, 'Expenses cannot be moved to the category being deleted'],
+      ];
+      for (const [moveTo, message] of cases) {
+        assert.throws(() => categories.remove(id, { moveTo }), (error) => {
+          assert.ok(error instanceof ValidationError);
+          assert.deepEqual(error.details, [{ field: 'moveTo', message }]);
+          return true;
+        });
+      }
+      assert.ok(categories.exists(id));
+      assert.equal(expenses.list({ categoryId: id }).length, 1);
+    });
   });
 
   it('makes a new category usable for expenses, budgets and analytics', () => {

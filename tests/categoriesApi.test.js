@@ -60,6 +60,21 @@ describe('Categories API (HTTP)', () => {
     assert.equal((await call('DELETE', `/api/categories/${hobby.id}`)).status, 404);
   });
 
+  it('DELETE with ?moveTo moves the expenses (204) and validates the target (400)', async () => {
+    const { body: clubs } = await call('POST', '/api/categories', { name: 'Clubs' });
+    const { body: expense } = await call('POST', '/api/expenses',
+      { amount: 25, categoryId: clubs.id, date: '2026-10-11', description: 'Membership' });
+
+    const badTarget = await call('DELETE', `/api/categories/${clubs.id}?moveTo=9999`);
+    assert.equal(badTarget.status, 400);
+    assert.deepEqual(badTarget.body.error.details, [{ field: 'moveTo', message: 'Target category does not exist' }]);
+
+    assert.equal((await call('DELETE', `/api/categories/${clubs.id}?moveTo=6`)).status, 204);
+    const moved = await call('GET', `/api/expenses/${expense.id}`);
+    assert.equal(moved.body.categoryId, 6);
+    assert.equal(moved.body.categoryName, 'Entertainment');
+  });
+
   it('rejects expenses for a deleted category', async () => {
     const { body: temporary } = await call('POST', '/api/categories', { name: 'Temporary' });
     await call('DELETE', `/api/categories/${temporary.id}`);

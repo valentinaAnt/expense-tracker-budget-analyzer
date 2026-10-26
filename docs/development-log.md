@@ -909,4 +909,91 @@ system. This time the dark theme is **manual only**:
   and the form controls and calendar icon are dark.
 - `npm test`: 105/105 pass. The `main.tex` structure check passes.
 
+**Commit:** `7fda061` — `feat: add light/dark theme switch; update documentation` (committed by the student).
+
+---
+
+## Entry 24 — Further improvements: filter, CSV export, moving expenses, trend, phone cards (2026-10-26)
+
+**Prompts used:**
+
+```
+is there anything we can improve in my app
+```
+
+Claude listed improvements in three groups:
+
+- small: category filter, CSV export, moving expenses when deleting a category;
+- bigger: a six-month trend, a phone-friendly expense list;
+- grade-related: browser tests in the repository, the last uncovered lines.
+
+It advised against income tracking, per-month budgets and multiple currencies, which would change the data model and
+the requirements. The student answered:
+
+```
+okay lets improve anything we can do
+```
+
+Claude explained the design of each item before implementing it. The browser tests in the repository (item 6) were not
+built yet, because they need a decision from the student (see "Open question").
+
+**Changes:**
+
+| Feature | Backend | Frontend |
+|---|---|---|
+| Category filter | — (the API already supported `categoryId`) | "All categories" drop-down above the list; a specific empty message such as "No Health expenses in October 2026." |
+| CSV export | new `src/csv.js`; `GET /api/expenses/export` (registered before `/:id`), same filters and validation as the list | "Export CSV" link that follows the month and filter |
+| Moving expenses | `DELETE /api/categories/:id?moveTo=ID`; `categoryService.remove` validates the target (positive integer, exists, not the category itself → 400) and moves the expenses, deletes the budget and deletes the category in one transaction | the delete dialog shows "Move its N expenses to" (default "Other") and "Move and delete" |
+| Six-month trend | `analyticsService.getTrend(month, months)` and `GET /api/analytics/trend` (`months` 1–24, default 6): one grouped query, empty months filled with 0, plus the sum of the monthly budgets | "Last 6 months" panel under Top categories: bars, the dashed budget line, the over-budget month in red; clicking a bar opens that month |
+| Phone cards | — | CSS only, below 520 px; explicit table roles keep the table readable for screen readers |
+| Coverage | `tests/errors.test.js` covers the `headersSent` branch of the error handler (`errors.js` now 100 %) | — |
+
+The CSV export writes a UTF-8 BOM, comma-separated values and CRLF line endings. Text starting with `=`, `+`, `-` or `@`
+gets a leading `'`, so spreadsheets do not run it as a formula (CSV injection). `validation.js` gained `shiftMonth`.
+`.btn` got `white-space: nowrap` after a screenshot showed "Export CSV" broken onto two lines.
+
+**Verification by Claude (actual results):**
+
+- `npm run test:coverage`: **124 tests, 26 suites, 124 pass, 0 fail**; **97.55 % lines, 97.33 % branches** (was 97.01 / 96.51).
+  No temporary test folders were left behind.
+  - One new test first failed because of a wrong expectation in the test itself: Express writes
+    `filename=expenses-2031-05.csv` without quotes. The test was corrected.
+- Deliberate bugs:
+  - a trend window one month off (`-count` instead of `-(count - 1)`) → 4 tests failed;
+  - skipping the move of the expenses → 2 tests failed (`FOREIGN KEY constraint failed`; the transaction left nothing
+    half-deleted).
+
+  Both changes were reverted and the suite passed again.
+- The scratch headless-Edge script was updated and extended. The old step "category with expenses is not deleted" was
+  replaced, because that is no longer the behaviour. New steps: the move dialog (default Other, cancel keeps everything),
+  move and delete, the plain dialog for an unused category, the filter, the export file contents, the empty filter
+  message, the trend labels, values and click-through, and an empty month.
+
+  Results: **46/46 + 4/4 theme checks passed**. In the first run 45/46 passed: the script expected the label "Sep",
+  but Edge shows "Sept" in British English, so the check was corrected.
+- Desktop, dark and phone screenshots were inspected. A probe at 390 px confirmed no horizontal overflow (page width
+  390 = viewport). The summary cards now stack in one column on phones, which is what their grid does at that width.
+
+**Documentation:**
+
+- `README.md`: features, rules (moving expenses, CSV format and an Excel tip), API table, test count.
+- `report/main.tex`: requirements, UI/expense/database/analytics modules, API table, UI workflow and testing text,
+  testing numbers (124 tests, 97.6 %/97.3 %, the new deliberate-bug checks, 50 browser steps), improvements and
+  conclusion. The 105-test clean-copy check is now described as happening "before the last features".
+
+**Decision on browser tests in the repository:** Claude offered two options:
+
+- turn the scratch script into an optional `npm run test:ui` that uses the installed Edge or Chrome;
+- add Playwright (about 100 MB of downloads).
+
+The student answered "leave it". The browser check stays a scratch script, and the report keeps listing
+"automated browser tests included in the repository" as a possible improvement.
+
+**Follow-ups:**
+
+- Both report screenshots are now out of date: the dashboard has the trend panel, and the tests now number 124.
+  The `04-tests.png` caption already says 124. Retake both.
+- Repeat the clean-copy check after this commit.
+- The report grew to about 3,500 words; compile it in Overleaf and check the page count.
+
 **Commit:** pending.

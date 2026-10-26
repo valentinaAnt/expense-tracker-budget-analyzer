@@ -119,3 +119,73 @@ describe('analyticsService.getMonthlySummary', () => {
     }
   });
 });
+
+describe('analyticsService.getTrend', () => {
+  let testDb;
+  let expenses;
+  let budgets;
+  let analytics;
+
+  const addExpense = (amount, date) =>
+    expenses.create({ amount, categoryId: CATEGORY.Food, date, description: `Food ${date}` });
+
+  beforeEach(() => {
+    testDb = createTestDatabase();
+    const categories = createCategoryService(testDb.db);
+    expenses = createExpenseService(testDb.db, categories);
+    budgets = createBudgetService(testDb.db, categories);
+    analytics = createAnalyticsService(testDb.db, { now: () => new Date(2026, 9, 22) });
+  });
+
+  afterEach(() => testDb.close());
+
+  it('totals each of the last six months, oldest first, with zero for months without expenses', () => {
+    addExpense(100, '2026-04-30'); // just before the six-month window
+    addExpense(20.5, '2026-05-01');
+    addExpense(10, '2026-07-15');
+    addExpense(5.25, '2026-07-31');
+    addExpense(40, '2026-10-31');
+    addExpense(999, '2026-11-01'); // just after
+
+    assert.deepEqual(analytics.getTrend('2026-10').months, [
+      { month: '2026-05', totalSpent: 20.5, expenseCount: 1 },
+      { month: '2026-06', totalSpent: 0, expenseCount: 0 },
+      { month: '2026-07', totalSpent: 15.25, expenseCount: 2 },
+      { month: '2026-08', totalSpent: 0, expenseCount: 0 },
+      { month: '2026-09', totalSpent: 0, expenseCount: 0 },
+      { month: '2026-10', totalSpent: 40, expenseCount: 1 },
+    ]);
+  });
+
+  it('crosses a year boundary and accepts another number of months', () => {
+    addExpense(10, '2025-12-31');
+    addExpense(20, '2026-01-01');
+    assert.deepEqual(analytics.getTrend('2026-01', '2').months, [
+      { month: '2025-12', totalSpent: 10, expenseCount: 1 },
+      { month: '2026-01', totalSpent: 20, expenseCount: 1 },
+    ]);
+  });
+
+  it('reports the sum of all monthly budgets, or null when there are none', () => {
+    assert.equal(analytics.getTrend('2026-10').monthlyBudget, null);
+    budgets.set(CATEGORY.Food, { monthlyLimit: 300 });
+    budgets.set(CATEGORY.Transport, { monthlyLimit: 99.99 });
+    assert.equal(analytics.getTrend('2026-10').monthlyBudget, 399.99);
+  });
+
+  it('ends at the current month by default', () => {
+    assert.equal(analytics.getTrend().months.at(-1).month, '2026-10');
+    assert.equal(analytics.getTrend().months.length, 6);
+  });
+
+  it('rejects an invalid month or number of months', () => {
+    assert.throws(() => analytics.getTrend('2026-13'), ValidationError);
+    for (const months of ['0', '25', '-1', '2.5', 'six', '']) {
+      assert.throws(() => analytics.getTrend('2026-10', months), (error) => {
+        assert.ok(error instanceof ValidationError);
+        assert.equal(error.details[0].field, 'months');
+        return true;
+      });
+    }
+  });
+});

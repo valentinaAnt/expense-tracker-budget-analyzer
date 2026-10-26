@@ -7,6 +7,7 @@ import {
   normalizeCategoryName,
   normalizeDescription,
   parseId,
+  shiftMonth,
   toCents,
 } from '../src/validation.js';
 
@@ -61,6 +62,14 @@ describe('isValidMonth and monthRange', () => {
   it('returns a half-open range, rolling over at year end', () => {
     assert.deepEqual(monthRange('2026-10'), { start: '2026-10-01', end: '2026-11-01' });
     assert.deepEqual(monthRange('2026-12'), { start: '2026-12-01', end: '2027-01-01' });
+  });
+
+  it('shifts months forwards and backwards across year boundaries', () => {
+    assert.equal(shiftMonth('2026-10', 0), '2026-10');
+    assert.equal(shiftMonth('2026-10', -5), '2026-05');
+    assert.equal(shiftMonth('2026-01', -1), '2025-12');
+    assert.equal(shiftMonth('2026-12', 1), '2027-01');
+    assert.equal(shiftMonth('2026-03', -27), '2023-12');
   });
 });
 

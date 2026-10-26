@@ -114,11 +114,11 @@ Claude Code as the AI coding assistant.
 \begin{enumerate}
     \item \textbf{Expense management:} add, view, edit, and delete
     (with confirmation) expenses with an amount, category, date, and
-    description.
+    description, and export the listed expenses as a CSV file.
     \item \textbf{Categories and filtering:} nine default categories;
-    users can add their own, rename them, and delete unused ones.
-    Expenses can be filtered by month (interface and API) and by
-    category (API).
+    users can add their own, rename them, and delete them (expenses of a
+    deleted category are moved to a category the user chooses).
+    Expenses can be filtered by month and by category.
     \item \textbf{Financial dashboard:} for a selected month, total
     spending, total budget, budget left or exceeded, and the number of
     categories over budget.
@@ -127,8 +127,9 @@ Claude Code as the AI coding assistant.
     marked as within budget, close to the limit (from 80\,\%), or over
     budget.
     \item \textbf{Spending analytics:} a bar chart of spending against
-    each budget and the three highest-spending categories with their
-    share of the total, all calculated from stored records.
+    each budget, the three highest-spending categories with their share
+    of the total, and the spending of the last six months, all
+    calculated from stored records.
     \item \textbf{Data persistence:} data is stored in SQLite and
     remains available after the server is restarted.
 \end{enumerate}
@@ -214,13 +215,14 @@ Node.js 24.22.1 with npm 11.19.1.
 \subsection{User Interface Module}
 
 \texttt{public/index.html} is one page in three sections: an overview
-(summary cards, category bar chart, top categories), expenses (the form
-with \emph{Clear}/\emph{Cancel} next to the expense table), and settings
+(summary cards, category bar chart, top categories, six-month trend),
+expenses (the form with \emph{Clear}/\emph{Cancel} next to the expense
+list with its category filter and \emph{Export CSV} link), and settings
 (budgets and categories). \texttt{api.js} is the only module that calls
 \texttt{fetch}; \texttt{app.js} renders data, handles events, and formats
-amounts in euros. A \texttt{<dialog>} confirms deletions. The blue-grey
-design uses colour only for budget warnings and has a light and a dark
-theme, switched with a moon/sun button.
+amounts in euros. A \texttt{<dialog>} confirms deletions. On phones the
+expense table turns into cards. The blue-grey design uses colour only for
+budget warnings and has a light and a dark theme (moon/sun button).
 
 \subsection{Expense Management Module}
 
@@ -229,8 +231,10 @@ invalid fields together, and performs create, read, update, delete, and
 filtered list operations. \texttt{validation.js} holds shared checks:
 amounts are parsed as text into integer cents (positive, at most two
 decimals, up to 1{,}000{,}000), dates must be real calendar dates, and
-IDs positive integers. \texttt{errors.js} maps errors to HTTP status
-codes (Table~\ref{tab:api}).
+IDs positive integers. \texttt{csv.js} writes the CSV export and
+prefixes text starting with \texttt{=}, \texttt{+}, \texttt{-} or
+\texttt{@} so that spreadsheets do not run it as a formula.
+\texttt{errors.js} maps errors to HTTP status codes (Table~\ref{tab:api}).
 
 \begin{table}[htbp]
 \centering
@@ -240,13 +244,15 @@ codes (Table~\ref{tab:api}).
 \textbf{Endpoint} & \textbf{Purpose and responses} \\
 \midrule
 \texttt{GET /api/expenses} & List, newest first; optional \texttt{month} and \texttt{categoryId} filters (200; 400) \\
+\texttt{GET /api/expenses/export} & The same filtered list as a CSV download (200; 400) \\
 \texttt{POST /api/expenses} & Create (201); 400 invalid data or JSON, 413 body too large \\
 \texttt{GET, PUT, DELETE /api/expenses/:id} & Read (200), update (200), delete (204); 400 invalid, 404 unknown \\
 \texttt{GET, POST /api/categories} & List with expense counts (200), create (201); 400 invalid, 409 duplicate \\
-\texttt{PUT, DELETE /api/categories/:id} & Rename (200), delete with its budget (204); 404, 409 duplicate or still in use \\
+\texttt{PUT, DELETE /api/categories/:id} & Rename (200), delete with its budget (204); optional \texttt{moveTo} moves its expenses; 404, 409 duplicate or still in use \\
 \texttt{GET /api/budgets} & List all budgets (200) \\
 \texttt{PUT, DELETE /api/budgets/:categoryId} & Set or replace (200), remove (204); 400 invalid, 404 unknown \\
 \texttt{GET /api/analytics/summary} & Summary for \texttt{month} (default: current month); 400 invalid month \\
+\texttt{GET /api/analytics/trend} & Spending per month for the last \texttt{months} (default 6) and the monthly budget; 400 \\
 \bottomrule
 \end{tabularx}
 \caption{Main API endpoints. Errors use the format \texttt{\{"error": \{code, message, details\}\}}; unexpected errors return a generic 500.}
@@ -264,7 +270,8 @@ repeatable; the default categories are inserted only once, tracked with
 SQLite's \texttt{user\_version}, so categories deleted by the user are
 not recreated. A case-insensitive unique index on category names and
 \texttt{CHECK} constraints act as a last line of defence behind the
-service validation. A category cannot be deleted while expenses use it.
+service validation. A category with expenses is deleted only after its
+expenses are moved to another category, in one transaction.
 
 \subsection{Budget Management and Analytics Module}
 
@@ -274,7 +281,8 @@ service validation. A category cannot be deleted while expenses use it.
 half-open range from the first day of the month to the first day of the
 next month (the same rule as the expense list) and joins the budgets.
 The status is \emph{ok} below 80\,\%, \emph{warning} from 80\,\% to
-100\,\%, \emph{over} above 100\,\%, or \emph{no budget}.
+100\,\%, \emph{over} above 100\,\%, or \emph{no budget}. The trend uses
+the same month rule and fills months without expenses with zero.
 
 \subsection{Testing Module}
 
@@ -329,13 +337,18 @@ and asked for the blue-grey palette that became the final design. Later
 the student found the page poorly arranged; Claude proposed two layouts
 as mock-ups and the student chose the three-section version. The student
 then asked for a manual light/dark switch with a moon and a sun, so light
-stays the default and the browser remembers the choice.
+stays the default and the browser remembers the choice. Finally, asked
+what could still be improved, Claude proposed a prioritised list; the
+student chose all practical items: a category filter, CSV export, moving
+expenses when a category is deleted, a six-month trend, and expense cards
+on phones.
 
 \textbf{Testing Strategy.} A temporary script (not in the repository)
 drove headless Edge through the real interface: validation, adding,
-editing, deleting, budgets, categories, month navigation, a simulated
-network failure, and the theme switch (including after a page reload).
-Its final 41 steps all passed, and a description
+editing, deleting, budgets, categories (including moving expenses), the
+filter and export, the trend, month navigation, a simulated network
+failure, and the theme switch (including after a page reload).
+Its final 50 steps all passed, and a description
 containing \texttt{<b>bold?</b>} was shown as plain text, confirming the
 XSS protection. The student's own use found two problems the script had
 missed: an error that never disappeared after saving an empty budget,
@@ -460,14 +473,18 @@ passed again. A coverage report also revealed a real bug:
 on purpose, one new test still passed and another hung, so both were
 strengthened until they failed on the buggy code.
 
-\textbf{Testing Strategy.} The final suite has 105 tests in 22 groups,
-including tests that start \texttt{src/server.js} as a real process and
-check that data survives a restart. The final run reported 105 passed and
-0 failed, with 97.0\,\% line and 96.5\,\% branch coverage (the uncovered
-code is mainly the Ctrl+C shutdown handler). As a last step the committed
-project was cloned into an empty folder and set up as the README
-describes: \texttt{npm ci} reported 0 vulnerabilities, all 105 tests
-passed, and the server answered \texttt{/api/health} with
+\textbf{Testing Strategy.} The final suite has 124 tests in 26 groups,
+including CSV formatting, moving expenses between categories, the trend,
+and tests that start \texttt{src/server.js} as a real process and check
+that data survives a restart. The final run reported 124 passed and 0
+failed, with 97.6\,\% line and 97.3\,\% branch coverage (the uncovered
+code is mainly the Ctrl+C shutdown handler). The same deliberate-bug
+check was repeated for the new features: a trend window one month off and
+a deletion that skipped moving the expenses were both caught. Before the
+last features, the committed project was cloned into an empty folder and
+set up as the README describes: \texttt{npm ci} reported 0
+vulnerabilities, all 105 tests at that time passed, and the server
+answered \texttt{/api/health} with
 \texttt{\{"status":"ok","database":"ok"\}}, confirming that nothing
 needed to run the project was missing from Git.
 
@@ -538,9 +555,10 @@ budget status.
 
 \subsection{Possible Improvements}
 
-Income tracking, budgets that differ per month, moving expenses when
-deleting a category, multi-month trend charts, CSV export, and automated
-browser tests included in the repository.
+Income tracking, budgets that differ per month, and automated browser
+tests included in the repository. (Moving expenses when deleting a
+category, a multi-month trend, and CSV export were listed here earlier and
+have since been built.)
 
 % ==================================================
 % 5. WORKING SYSTEM EVIDENCE
@@ -567,8 +585,8 @@ the test suite on the student's computer.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.75\textwidth]{04-tests.png}
-    \caption{End of the \texttt{npm test} output: 105 tests in 22
-    suites, 105 passed, 0 failed.}
+    \caption{End of the \texttt{npm test} output: 124 tests in 26
+    suites, 124 passed, 0 failed.}
     \label{fig:tests}
 \end{figure}
 
@@ -586,10 +604,11 @@ at \repolink.
 \subsection{Conclusion}
 
 The completed system meets all functional requirements: a user can
-record, edit, and delete expenses, manage categories, set monthly
-budgets, and see accurate totals, budget usage, and top categories on a
-responsive dashboard, with all data stored in SQLite. 105 automated
-tests, a 41-step browser check, the student's own use of the interface,
+record, edit, filter, export, and delete expenses, manage categories,
+set monthly budgets, and see accurate totals, budget usage, top
+categories, and a six-month trend on a responsive dashboard, with all
+data stored in SQLite. 124 automated
+tests, a 50-step browser check, the student's own use of the interface,
 and a set-up from a clean copy of the repository confirmed that it
 works. Its main limitations are the deliberate scope boundaries (one
 user, one currency, no income) and browser tests that are not yet part

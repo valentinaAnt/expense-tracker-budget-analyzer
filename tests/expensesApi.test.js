@@ -170,4 +170,36 @@ describe('Expenses API (HTTP)', () => {
     assert.equal(created.body.description, description);
     assert.equal((await call('GET', '/api/expenses')).status, 200);
   });
+
+  it('GET /api/expenses/export downloads the filtered month as CSV', async () => {
+    await call('POST', '/api/expenses', { amount: 9.9, categoryId: 2, date: '2031-05-20', description: 'Bus, return' });
+    await call('POST', '/api/expenses', { amount: 30, categoryId: 1, date: '2031-05-03', description: '=1+1' });
+    await call('POST', '/api/expenses', { amount: 99, categoryId: 2, date: '2031-06-01', description: 'Next month' });
+
+    const response = await fetch(`${server.baseUrl}/api/expenses/export?month=2031-05`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'text/csv; charset=utf-8');
+    assert.equal(response.headers.get('content-disposition'), 'attachment; filename=expenses-2031-05.csv');
+    // Read raw bytes: text() would silently drop the byte-order mark.
+    const csv = new TextDecoder('utf-8', { ignoreBOM: true }).decode(await response.arrayBuffer());
+    assert.equal(csv,
+      '﻿Date,Description,Category,Amount (EUR)\r\n'
+      + '2031-05-20,"Bus, return",Transport,9.90\r\n'
+      + "2031-05-03,'=1+1,Food,30.00\r\n");
+
+    const transportOnly = await (await fetch(`${server.baseUrl}/api/expenses/export?month=2031-05&categoryId=2`)).text();
+    assert.equal(transportOnly.split('\r\n').length, 3); // header, one row, final empty string
+  });
+
+  it('GET /api/expenses/export validates its filters like the list does', async () => {
+    assert.equal((await call('GET', '/api/expenses/export?month=2031-13')).status, 400);
+    assert.equal((await call('GET', '/api/expenses/export?categoryId=x')).status, 400);
+  });
+
+  it('GET /api/expenses/export without a month exports everything as expenses.csv', async () => {
+    const response = await fetch(`${server.baseUrl}/api/expenses/export`);
+    assert.equal(response.headers.get('content-disposition'), 'attachment; filename=expenses.csv');
+    const rows = (await response.text()).trim().split('\r\n');
+    assert.equal(rows.length - 1, (await call('GET', '/api/expenses')).body.length);
+  });
 });

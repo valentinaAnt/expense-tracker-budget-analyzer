@@ -74,6 +74,13 @@ export function monthRange(month) {
   return { start: `${month}-01`, end: `${next}-01` };
 }
 
+/** Moves a YYYY-MM month by a number of months, e.g. ("2026-01", -1) → "2025-12". */
+export function shiftMonth(month, delta) {
+  const [year, monthNumber] = month.split('-').map(Number);
+  const index = year * 12 + (monthNumber - 1) + delta;
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+}
+
 /** Accepts a positive integer as a number or a digit string (e.g. from a URL); otherwise returns null. */
 export function parseId(value) {
   if (typeof value === 'number') {

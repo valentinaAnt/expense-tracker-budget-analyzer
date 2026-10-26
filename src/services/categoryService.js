@@ -13,12 +13,15 @@ export function createCategoryService(db) {
     names: db.prepare('SELECT id, name FROM categories'),
     insert: db.prepare('INSERT INTO categories (name) VALUES (?)'),
     rename: db.prepare('UPDATE categories SET name = ? WHERE id = ?'),
+    moveExpenses: db.prepare(`
+      UPDATE expenses SET category_id = ?, updated_at = datetime('now') WHERE category_id = ?`),
     removeBudget: db.prepare('DELETE FROM budgets WHERE category_id = ?'),
     remove: db.prepare('DELETE FROM categories WHERE id = ?'),
   };
 
-  // The category and its budget are deleted together or not at all.
-  const removeWithBudget = db.transaction((id) => {
+  // Moving the expenses and deleting the category and its budget happen together or not at all.
+  const removeCategory = db.transaction((id, moveToId) => {
+    if (moveToId !== null) statements.moveExpenses.run(moveToId, id);
     statements.removeBudget.run(id);
     statements.remove.run(id);
   });
@@ -58,6 +61,20 @@ export function createCategoryService(db) {
     }
   }
 
+  /** Validates the category that a deleted category's expenses are moved to. */
+  function readMoveTarget(value, deletedId) {
+    const id = parseId(value);
+    let message = null;
+    if (id === null) message = 'Target category ID must be a positive integer';
+    else if (id === deletedId) message = 'Expenses cannot be moved to the category being deleted';
+    else if (!statements.exists.get(id)) message = 'Target category does not exist';
+
+    if (message) {
+      throw new ValidationError([{ field: 'moveTo', message }], 'Invalid target category');
+    }
+    return id;
+  }
+
   return {
     /** All categories in creation order, each with the number of expenses that use it. */
     list() {
@@ -83,17 +100,23 @@ export function createCategoryService(db) {
       return statements.byId.get(category.id);
     },
 
-    /** Deletes an unused category together with its budget; refuses while expenses still use it. */
-    remove(idValue) {
+    /**
+     * Deletes a category together with its budget. A category that still has expenses is only deleted
+     * when `moveTo` names another category; its expenses are then moved there. Returns the number moved.
+     */
+    remove(idValue, { moveTo } = {}) {
       const category = requireCategory(idValue);
+
+      const moveToId = moveTo === undefined ? null : readMoveTarget(moveTo, category.id);
       const count = category.expenseCount;
-      if (count > 0) {
+      if (count > 0 && moveToId === null) {
         const noun = count === 1 ? 'expense' : 'expenses';
         throw new ConflictError(
           `Category "${category.name}" still has ${count} ${noun}. Move or delete ${count === 1 ? 'it' : 'them'} first.`,
         );
       }
-      removeWithBudget(category.id);
+      removeCategory(category.id, moveToId);
+      return count;
     },
   };
 }

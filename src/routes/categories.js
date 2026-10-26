@@ -15,8 +15,9 @@ export function createCategoriesRouter(categoryService) {
     res.json(categoryService.rename(req.params.id, req.body));
   });
 
+  // Optional ?moveTo=<categoryId> moves the category's expenses there before deleting it.
   router.delete('/:id', (req, res) => {
-    categoryService.remove(req.params.id);
+    categoryService.remove(req.params.id, { moveTo: req.query.moveTo });
     res.status(204).end();
   });
 

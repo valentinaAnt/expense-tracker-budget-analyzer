@@ -1,8 +1,10 @@
 import { ValidationError } from '../errors.js';
-import { fromCents, isValidMonth, monthRange } from '../validation.js';
+import { fromCents, isValidMonth, monthRange, parseId, shiftMonth } from '../validation.js';
 
 export const WARNING_THRESHOLD_PERCENT = 80;
 const TOP_CATEGORY_COUNT = 3;
+export const DEFAULT_TREND_MONTHS = 6;
+export const MAX_TREND_MONTHS = 24;
 
 /** Percentage rounded to one decimal, computed from integer cents. */
 function percent(part, whole) {
@@ -43,11 +45,24 @@ export function createAnalyticsService(db, { now = () => new Date() } = {}) {
     LEFT JOIN budgets b ON b.category_id = c.id
     ORDER BY c.id`);
 
-  /** Summary for a YYYY-MM month; defaults to the current month. */
-  function getMonthlySummary(month = toMonth(now())) {
+  // Spending per month over a date range; months without expenses are filled in with zero afterwards.
+  const monthTotals = db.prepare(`
+    SELECT substr(expense_date, 1, 7) AS month, SUM(amount_cents) AS spent_cents, COUNT(*) AS expense_count
+    FROM expenses
+    WHERE expense_date >= ? AND expense_date < ?
+    GROUP BY month`);
+
+  const budgetTotal = db.prepare('SELECT SUM(monthly_limit_cents) AS cents FROM budgets');
+
+  function requireMonth(month) {
     if (!isValidMonth(month)) {
       throw new ValidationError([{ field: 'month', message: 'Month must be in YYYY-MM format' }]);
     }
+  }
+
+  /** Summary for a YYYY-MM month; defaults to the current month. */
+  function getMonthlySummary(month = toMonth(now())) {
+    requireMonth(month);
 
     const { start, end } = monthRange(month);
     const rows = categoryTotals.all(start, end);
@@ -95,5 +110,31 @@ export function createAnalyticsService(db, { now = () => new Date() } = {}) {
     };
   }
 
-  return { getMonthlySummary };
+  /**
+   * Total spending for each of the `months` months up to and including `month` (oldest first),
+   * using the same month rule as the summary. `monthlyBudget` is the sum of all current monthly budgets
+   * (budgets apply to every month), or null when no budget is set.
+   */
+  function getTrend(month = toMonth(now()), months = DEFAULT_TREND_MONTHS) {
+    requireMonth(month);
+    const count = parseId(months);
+    if (count === null || count > MAX_TREND_MONTHS) {
+      throw new ValidationError([{ field: 'months', message: `Months must be a whole number from 1 to ${MAX_TREND_MONTHS}` }]);
+    }
+
+    const first = shiftMonth(month, -(count - 1));
+    const totals = new Map(monthTotals.all(monthRange(first).start, monthRange(month).end).map((row) => [row.month, row]));
+    const budgetCents = budgetTotal.get().cents;
+
+    return {
+      monthlyBudget: budgetCents === null ? null : fromCents(budgetCents),
+      months: Array.from({ length: count }, (_, index) => {
+        const key = shiftMonth(first, index);
+        const row = totals.get(key);
+        return { month: key, totalSpent: fromCents(row?.spent_cents ?? 0), expenseCount: row?.expense_count ?? 0 };
+      }),
+    };
+  }
+
+  return { getMonthlySummary, getTrend };
 }

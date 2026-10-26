@@ -77,4 +77,21 @@ describe('Budgets and analytics API (HTTP)', () => {
     assert.equal(status, 400);
     assert.equal(body.error.details[0].field, 'month');
   });
+
+  it('GET /api/analytics/trend returns monthly totals and rejects an invalid number of months', async () => {
+    await call('POST', '/api/expenses', { amount: 12, categoryId: 2, date: '2030-02-10', description: 'Taxi' });
+    await call('POST', '/api/expenses', { amount: 8, categoryId: 2, date: '2030-03-05', description: 'Bus' });
+
+    const { status, body } = await call('GET', '/api/analytics/trend?month=2030-03&months=3');
+    assert.equal(status, 200);
+    assert.deepEqual(body.months, [
+      { month: '2030-01', totalSpent: 0, expenseCount: 0 },
+      { month: '2030-02', totalSpent: 12, expenseCount: 1 },
+      { month: '2030-03', totalSpent: 8, expenseCount: 1 },
+    ]);
+
+    const invalid = await call('GET', '/api/analytics/trend?months=30');
+    assert.equal(invalid.status, 400);
+    assert.equal(invalid.body.error.details[0].field, 'months');
+  });
 });

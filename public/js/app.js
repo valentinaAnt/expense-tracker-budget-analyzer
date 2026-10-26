@@ -3,8 +3,10 @@ import { api, ApiError } from './api.js';
 // ---------- Formatting and date helpers ----------
 
 const money = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' });
+const wholeMoney = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const dayFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 const monthFormat = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' });
+const shortMonthFormat = new Intl.DateTimeFormat('en-GB', { month: 'short' });
 
 const AMOUNT_PATTERN = /^\d{1,7}(\.\d{1,2})?$/;
 const MAX_AMOUNT = 1_000_000;
@@ -24,9 +26,9 @@ function shiftMonth(month, delta) {
   return toMonth(new Date(year, monthNumber - 1 + delta, 1));
 }
 
-function formatMonth(month) {
+function formatMonth(month, format = monthFormat) {
   const [year, monthNumber] = month.split('-').map(Number);
-  return monthFormat.format(new Date(year, monthNumber - 1, 1));
+  return format.format(new Date(year, monthNumber - 1, 1));
 }
 
 function formatDate(isoDate) {
@@ -90,10 +92,16 @@ const elements = {
   expenseRows: $('expense-rows'),
   expenseEmpty: $('expense-empty'),
   expenseLoading: $('expense-loading'),
+  filterCategory: $('filter-category'),
+  exportCsv: $('export-csv'),
   chart: $('category-chart'),
   chartEmpty: $('chart-empty'),
   topList: $('top-categories'),
   topEmpty: $('top-empty'),
+  trendChart: $('trend-chart'),
+  trendLabels: $('trend-labels'),
+  trendBudget: $('trend-budget'),
+  trendSubtitle: $('trend-subtitle'),
   budgetList: $('budget-list'),
   categoryForm: $('category-form'),
   newCategory: $('new-category'),
@@ -102,6 +110,7 @@ const elements = {
   dialog: $('confirm-dialog'),
   confirmTitle: $('confirm-title'),
   confirmMessage: $('confirm-message'),
+  confirmExtra: $('confirm-extra'),
   confirmButton: $('confirm-button'),
 };
 
@@ -112,6 +121,7 @@ const state = {
   categories: [],
   budgets: [],
   expenses: [],
+  filterCategoryId: '', // '' = all categories
   editingId: null,
   renamingId: null,
   refreshId: 0,
@@ -155,10 +165,14 @@ function showLoadError(error) {
   elements.expenseLoading.hidden = true;
 }
 
-/** Shows a modal confirmation dialog and resolves to true if the user confirms. */
-function confirmAction({ title, message, confirmLabel }) {
+/**
+ * Shows a modal confirmation dialog and resolves to true if the user confirms.
+ * `extra` is an optional element (e.g. a drop-down) shown between the message and the buttons.
+ */
+function confirmAction({ title, message, confirmLabel, extra }) {
   elements.confirmTitle.textContent = title;
   elements.confirmMessage.textContent = message;
+  elements.confirmExtra.replaceChildren(...(extra ? [extra] : []));
   elements.confirmButton.textContent = confirmLabel;
   elements.dialog.returnValue = '';
   return new Promise((resolve) => {
@@ -189,11 +203,12 @@ async function refresh() {
   elements.main.classList.add('is-loading');
 
   try {
-    const [categories, expenses, summary, budgets] = await Promise.all([
+    const [categories, expenses, summary, budgets, trend] = await Promise.all([
       api.getCategories(),
-      api.listExpenses(state.month),
+      api.listExpenses(state.month, state.filterCategoryId),
       api.getSummary(state.month),
       api.listBudgets(),
+      api.getTrend(state.month),
     ]);
     // Ignore the result if a newer refresh started meanwhile (e.g. the month was changed quickly).
     if (refreshId !== state.refreshId) return;
@@ -205,8 +220,10 @@ async function refresh() {
     renderCategoryOptions();
     renderCategories();
     renderSummary(summary);
+    renderTrend(trend);
     renderExpenses(expenses);
     renderBudgets(budgets);
+    elements.exportCsv.href = api.exportUrl(state.month, state.filterCategoryId);
   } catch (error) {
     if (refreshId === state.refreshId) showLoadError(error);
   } finally {
@@ -217,15 +234,19 @@ async function refresh() {
   }
 }
 
-/** Rebuilds the category drop-down, keeping the current choice if that category still exists. */
-function renderCategoryOptions() {
-  const select = field('categoryId');
-  const current = select.value;
+/** Rebuilds a category drop-down, keeping the current choice if that category still exists. */
+function fillCategorySelect(select, emptyLabel, current = select.value) {
   select.replaceChildren(
-    el('option', { value: '', text: 'Choose…' }),
+    el('option', { value: '', text: emptyLabel }),
     ...state.categories.map((category) => el('option', { value: category.id, text: category.name })),
   );
   select.value = state.categories.some((category) => String(category.id) === current) ? current : '';
+}
+
+function renderCategoryOptions() {
+  fillCategorySelect(field('categoryId'), 'Choose…');
+  fillCategorySelect(elements.filterCategory, 'All categories', state.filterCategoryId);
+  state.filterCategoryId = elements.filterCategory.value;
 }
 
 // ---------- Dashboard ----------
@@ -316,20 +337,61 @@ function renderTopCategories(topCategories) {
   elements.topEmpty.hidden = topCategories.length > 0;
 }
 
+/**
+ * Column chart of the last six months. Bars are scaled to the largest month or the monthly budget,
+ * whichever is higher; a dashed line marks the budget. Clicking a bar opens that month.
+ */
+function renderTrend({ months, monthlyBudget }) {
+  const scale = Math.max(...months.map((item) => item.totalSpent), monthlyBudget ?? 0);
+  const height = (amount) => (scale > 0 ? (amount / scale) * 100 : 0);
+
+  const bars = months.map((item) => {
+    const over = monthlyBudget !== null && item.totalSpent > monthlyBudget;
+    const classes = ['trend-column', item.month === state.month && 'is-selected', over && 'is-over'];
+    const label = `${formatMonth(item.month)}: ${formatMoney(item.totalSpent)}${over ? ', over budget' : ''}. Show this month.`;
+    return el('li', {}, [
+      el('button', { type: 'button', className: classes.filter(Boolean).join(' '), dataset: { month: item.month },
+        'aria-label': label, title: label }, [
+        el('span', { className: 'trend-area' }, [
+          el('span', { className: 'trend-value', text: wholeMoney.format(item.totalSpent),
+            style: { bottom: `calc(${height(item.totalSpent)}% + 0.2rem)` } }),
+          el('span', { className: 'trend-bar', style: { height: `${height(item.totalSpent)}%` } }),
+        ]),
+      ]),
+    ]);
+  });
+
+  elements.trendChart.replaceChildren(...bars);
+  elements.trendBudget.replaceChildren(...(monthlyBudget === null ? [] : [
+    el('span', { className: 'trend-budget-line', style: { bottom: `${height(monthlyBudget)}%` } }),
+  ]));
+  elements.trendLabels.replaceChildren(...months.map((item) =>
+    el('span', { className: item.month === state.month ? 'is-selected' : undefined,
+      text: formatMonth(item.month, shortMonthFormat) })));
+  elements.trendSubtitle.textContent = monthlyBudget === null
+    ? 'Total spending per month.'
+    : `Total spending per month; the dashed line is your monthly budget (${formatMoney(monthlyBudget)}).`;
+}
+
 // ---------- Expense list ----------
 
 function renderExpenses(expenses) {
   elements.expenseLoading.hidden = true;
   elements.expenseEmpty.hidden = expenses.length > 0;
   elements.expenseTable.hidden = expenses.length === 0;
+  elements.expenseEmpty.textContent = state.filterCategoryId
+    ? `No ${categoryName(Number(state.filterCategoryId))} expenses in ${formatMonth(state.month)}.`
+    : 'No expenses recorded for this month yet.';
 
   elements.expenseRows.replaceChildren(...expenses.map((expense) =>
-    el('tr', { className: expense.id === state.editingId ? 'is-editing' : undefined }, [
-      el('td', { className: 'nowrap' }, [el('time', { datetime: expense.date, text: formatDate(expense.date) })]),
-      el('td', { className: 'description', text: expense.description }),
-      el('td', {}, [el('span', { className: 'pill', text: expense.categoryName })]),
-      el('td', { className: 'num', text: formatMoney(expense.amount) }),
-      el('td', { className: 'actions' }, [
+    el('tr', { role: 'row', className: expense.id === state.editingId ? 'is-editing' : undefined }, [
+      el('td', { role: 'cell', className: 'nowrap' }, [
+        el('time', { datetime: expense.date, text: formatDate(expense.date) }),
+      ]),
+      el('td', { role: 'cell', className: 'description', text: expense.description }),
+      el('td', { role: 'cell', className: 'category' }, [el('span', { className: 'pill', text: expense.categoryName })]),
+      el('td', { role: 'cell', className: 'num', text: formatMoney(expense.amount) }),
+      el('td', { role: 'cell', className: 'actions' }, [
         el('button', {
           type: 'button',
           className: 'btn btn-small',
@@ -708,26 +770,48 @@ async function handleCategoryRename(event) {
   }
 }
 
+/** Drop-down in the delete dialog for choosing where a category's expenses go. */
+function moveTargetField(category, targets) {
+  const count = expenseCountText(category.expenseCount).toLowerCase();
+  const other = targets.find((target) => target.name === 'Other') ?? targets[0];
+  return el('div', { className: 'field dialog-field' }, [
+    el('label', { for: 'move-to', text: `Move its ${count} to` }),
+    el('select', { id: 'move-to' }, targets.map((target) =>
+      el('option', { value: target.id, text: target.name, selected: target === other }))),
+  ]);
+}
+
 async function deleteCategory(category) {
-  // The server enforces this rule too; checking first avoids asking for a confirmation that would fail.
-  if (category.expenseCount > 0) {
-    const them = category.expenseCount === 1 ? 'it' : 'them';
-    showStatus(`"${category.name}" still has ${expenseCountText(category.expenseCount).toLowerCase()}. `
-      + `Move or delete ${them} first.`, 'error');
+  const hasExpenses = category.expenseCount > 0;
+  const targets = state.categories.filter((item) => item.id !== category.id);
+  if (hasExpenses && targets.length === 0) {
+    showStatus(`"${category.name}" has expenses and there is no other category to move them to.`, 'error');
     return;
   }
 
-  const hasBudget = state.budgets.some((budget) => budget.categoryId === category.id);
-  const confirmed = await confirmAction({
-    title: 'Delete category?',
-    message: `"${category.name}" will be deleted${hasBudget ? ' together with its monthly budget' : ''}.`,
-    confirmLabel: 'Delete category',
-  });
+  const budgetNote = state.budgets.some((budget) => budget.categoryId === category.id)
+    ? ' together with its monthly budget' : '';
+  const confirmed = await confirmAction(hasExpenses
+    ? {
+      title: 'Delete category?',
+      message: `"${category.name}" will be deleted${budgetNote}. Its expenses are kept and moved to the category you choose.`,
+      confirmLabel: 'Move and delete',
+      extra: moveTargetField(category, targets),
+    }
+    : {
+      title: 'Delete category?',
+      message: `"${category.name}" will be deleted${budgetNote}.`,
+      confirmLabel: 'Delete category',
+    });
   if (!confirmed) return;
 
+  const moveTo = hasExpenses ? Number($('move-to').value) : undefined;
   try {
-    await api.deleteCategory(category.id);
-    showStatus(`Category "${category.name}" deleted.`);
+    await api.deleteCategory(category.id, moveTo);
+    showStatus(hasExpenses
+      ? `Category "${category.name}" deleted; its expenses were moved to ${categoryName(moveTo)}.`
+      : `Category "${category.name}" deleted.`);
+    if (state.filterCategoryId === String(category.id)) state.filterCategoryId = '';
   } catch (error) {
     if (error instanceof ApiError && error.code === 'CONFLICT') {
       showStatus(error.message, 'error');
@@ -793,6 +877,16 @@ function bindEvents() {
     if (!expense) return;
     if (button.dataset.action === 'edit') startEdit(expense);
     else deleteExpense(expense);
+  });
+
+  elements.filterCategory.addEventListener('change', () => {
+    state.filterCategoryId = elements.filterCategory.value;
+    refresh();
+  });
+
+  elements.trendChart.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-month]');
+    if (button && button.dataset.month !== state.month) setMonth(button.dataset.month);
   });
 
   elements.budgetList.addEventListener('submit', handleBudgetSubmit);
