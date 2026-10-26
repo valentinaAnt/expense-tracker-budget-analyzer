@@ -1035,3 +1035,34 @@ The student answered "leave it". The browser check stays a scratch script, and t
 security update, instead of the earlier 105-test check.
 
 **Commit:** pending.
+
+---
+
+## Entry 26 — Amount arrows step by €0.10 (2026-10-26)
+
+**Prompt used:**
+
+```
+lets change the arrows next to amount to not be changed by 0.01 but by 0.10 for example
+```
+
+**Change:** in `public/index.html`, the Amount field changed from `step="0.01" min="0.01"` to `step="0.10" min="0"`.
+`min` had to change as well: browsers count steps from `min`, so with `min="0.01"` the arrows would have gone
+0.11 → 0.21 → 0.31.
+
+Typing amounts with cents still works:
+
+- the form uses `novalidate`, so the browser's step check does not block the form;
+- the app's own validation (client and server) still accepts up to 2 decimals and still rejects 0.
+
+The budget inputs were left at `step="0.01"`.
+
+**Verification by Claude (actual results):**
+
+- Real arrow-key presses in headless Edge:
+  - empty field, ↑ → `0.1`; ↑↑ → `0.3`;
+  - ↓ ×5 → `0` (stops at the minimum);
+  - typed `12.34`, ↑ → `12.4`; ↓↓ → `12.2`.
+- The full scratch browser script: **46/46 + 4/4 passed**. Saving €12.34 still works, and `12.345` is still rejected.
+
+**Commit:** pending.
