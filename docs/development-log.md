@@ -1065,4 +1065,24 @@ The budget inputs were left at `step="0.01"`.
   - typed `12.34`, ↑ → `12.4`; ↓↓ → `12.2`.
 - The full scratch browser script: **46/46 + 4/4 passed**. Saving €12.34 still works, and `12.345` is still rejected.
 
+**Commit:** `2e5f833` (together with Entry 25: `93ea169`). Both were committed and pushed by the student.
+
+---
+
+## Entry 27 — README check (2026-10-26)
+
+**Prompt used:** "does the readMe sync??"
+
+**Check by Claude:** `git status -sb` → `## main...origin/main`, with nothing uncommitted. Every README statement was
+compared with the code and the latest results:
+
+- features;
+- `package.json` scripts and `engines` (Node 24 or newer);
+- the API table against `src/routes/`;
+- 124 tests and 97.55 % line coverage;
+- the project structure against the files.
+
+All matched except one sentence: "All endpoints … use JSON" is not true for `GET /api/expenses/export`, which returns
+CSV. It now says "(except the CSV export)".
+
 **Commit:** pending.

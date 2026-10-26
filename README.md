@@ -53,7 +53,7 @@ Data is stored in `data/expenses.db`, which is not committed to Git; delete it t
 
 ## API
 
-All endpoints are under `/api` and use JSON; amounts are in euros.
+All endpoints are under `/api` and use JSON (except the CSV export); amounts are in euros.
 
 | Method | Path | Description |
 |---|---|---|
