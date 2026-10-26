@@ -1148,3 +1148,35 @@ Claude opened each image before writing its caption.
 is not installed locally, so the student compiles the report in Overleaf.
 
 **Commit:** pending.
+
+---
+
+## Entry 30 — Small visual polish (2026-10-26)
+
+**Prompts used:**
+
+```
+i am not sure if it will be more beautiful if we add other tabs and we can add some 3d in the app
+```
+
+```
+add it, i will discard them if i dont like them
+```
+
+**Decision:** Claude advised against 3D. Perspective distorts bar lengths, so amounts become harder to compare, and
+3D would add a library such as three.js to a frontend that uses no libraries. Claude also advised against tabs,
+because they would hide the summary while you work in the expense list. It suggested three CSS-only touches
+instead, and the student asked for those.
+
+**Change (`public/css/styles.css` only):**
+
+- the category bars, top-category bars and trend bars grow in when the dashboard is drawn (`transform: scale`, so
+  the inline widths and heights set by `app.js` are unchanged);
+- summary cards lift slightly with a stronger shadow (`--shadow-hover`, defined for both themes) on hover;
+- a card in the over-budget state (`.is-negative`) gets a rose edge along the top;
+- `prefers-reduced-motion: reduce` turns off the animations and the lift.
+
+**Verification:** `npm test`: 124/124 pass. Claude did not check the change in a browser; the student reviews it
+in the running app.
+
+**Commit:** pending. The student will keep or discard this change after looking at it.

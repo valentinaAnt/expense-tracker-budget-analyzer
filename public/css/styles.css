@@ -32,6 +32,7 @@
   --radius: 14px;
   --radius-sm: 9px;
   --shadow: 0 1px 2px rgb(15 23 42 / 4%), 0 1px 3px rgb(15 23 42 / 6%);
+  --shadow-hover: 0 6px 18px rgb(15 23 42 / 9%), 0 2px 4px rgb(15 23 42 / 5%);
   --shadow-lg: 0 12px 32px rgb(15 23 42 / 16%);
   --font: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
 }
@@ -65,6 +66,7 @@
   --danger-hover: #be123c;
 
   --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px rgb(0 0 0 / 25%);
+  --shadow-hover: 0 6px 18px rgb(0 0 0 / 45%), 0 2px 4px rgb(0 0 0 / 30%);
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 50%);
 }
 
@@ -392,6 +394,12 @@ main.is-loading {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 1.1rem 1.25rem 1.2rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
 }
 
 .card-head {
@@ -429,6 +437,15 @@ main.is-loading {
   color: var(--text-muted);
   font-size: 0.8rem;
   min-height: 1.2em;
+}
+
+/* Over budget: a rose edge along the top of the card. */
+.card.is-negative {
+  box-shadow: inset 0 3px 0 var(--over), var(--shadow);
+}
+
+.card.is-negative:hover {
+  box-shadow: inset 0 3px 0 var(--over), var(--shadow-hover);
 }
 
 .card.is-negative .card-value {
@@ -484,6 +501,17 @@ main.is-loading {
   min-width: 3px;
   border-radius: 999px;
   background: var(--ok);
+  transform-origin: left;
+  animation: grow-x 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Bars grow in when the dashboard is drawn; the transform leaves the inline width untouched. */
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+}
+
+@keyframes grow-y {
+  from { transform: scaleY(0); }
 }
 
 .status-warning .bar-fill { background: var(--warning); }
@@ -561,6 +589,8 @@ main.is-loading {
   height: 100%;
   border-radius: 999px;
   background: var(--ok);
+  transform-origin: left;
+  animation: grow-x 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* ---------- Six-month trend ---------- */
@@ -611,6 +641,8 @@ main.is-loading {
   background: var(--ok);
   opacity: 0.45;
   transition: opacity 0.15s;
+  transform-origin: bottom;
+  animation: grow-y 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .trend-column:hover .trend-bar { opacity: 0.75; }
@@ -1091,6 +1123,19 @@ a.btn {
 .dialog .form-actions {
   justify-content: flex-end;
   margin-top: 1.4rem;
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .bar-fill,
+  .top-bar-fill,
+  .trend-bar {
+    animation: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
 }
 
 /* ---------- Responsive ---------- */
