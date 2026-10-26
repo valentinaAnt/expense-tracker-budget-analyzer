@@ -751,6 +751,30 @@ function handleCategoryClick(event) {
   else if (button.dataset.action === 'delete') deleteCategory(category);
 }
 
+// ---------- Theme ----------
+
+const THEME_KEY = 'theme';
+const themeToggle = $('theme-toggle');
+
+/** Shows the chosen theme and labels the switch with the theme it will change to. */
+function applyTheme(theme) {
+  if (theme === 'dark') document.documentElement.dataset.theme = 'dark';
+  else delete document.documentElement.dataset.theme;
+  const label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+  themeToggle.setAttribute('aria-label', label);
+  themeToggle.title = label;
+}
+
+function toggleTheme() {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(theme);
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    // Storage unavailable (e.g. a private window): the theme still changes, it is just not remembered.
+  }
+}
+
 // ---------- Start-up ----------
 
 function bindEvents() {
@@ -788,8 +812,10 @@ function bindEvents() {
   $('prev-month').addEventListener('click', () => setMonth(shiftMonth(state.month, -1)));
   $('next-month').addEventListener('click', () => setMonth(shiftMonth(state.month, 1)));
   $('retry').addEventListener('click', refresh);
+  themeToggle.addEventListener('click', toggleTheme);
 }
 
+applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
 bindEvents();
 showMonth(state.month);
 field('date').value = todayIso();

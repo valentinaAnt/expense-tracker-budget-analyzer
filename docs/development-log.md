@@ -854,4 +854,59 @@ had very different heights. Claude offered two layouts with mock-ups; the studen
 **Follow-up for the student:** `report/01-dashboard.png` shows the old layout. Retake it and replace it in the repo
 and in Overleaf.
 
+**Commit:** `28cd0b7` — `feat: reorganise dashboard into overview, expenses and settings sections` (committed by the
+student).
+
+---
+
+## Entry 23 — Light/dark theme switch (2026-10-26)
+
+**Prompt used:**
+
+```
+i think it woukd be great if we add a switch to light or dark theme
+
+we can add a moon and a sun fow each to switch between dark and light
+```
+
+**Decision:** earlier (Entry 13) the student rejected a dark mode that turned on **automatically** with the operating
+system. This time the dark theme is **manual only**:
+
+- light stays the default;
+- the moon button switches to dark and the sun button switches back;
+- the choice is saved in the browser's `localStorage`. If storage is unavailable, the switch still works for the visit.
+
+**Changes:**
+
+- `public/css/styles.css`:
+  - a dark set of the existing colour variables under `:root[data-theme="dark"]` (slate background, lighter blue,
+    amber and rose for warnings, `color-scheme: dark` for the form controls);
+  - two new variables, `--accent-text` and `--toast-text`, replace fixed colours that would be unreadable in dark mode;
+  - styles for the round switch button.
+- `public/index.html`:
+  - a small inline script in `<head>` applies a saved dark theme before the page is drawn, so the page does not
+    flash light first;
+  - the switch button (moon and sun SVG icons) next to the month picker.
+- `public/js/app.js`: `applyTheme()` and `toggleTheme()`. The button's `aria-label` and `title` always name the theme
+  it switches to ("Switch to dark theme" / "Switch to light theme").
+- `README.md`: one feature line added.
+- `report/main.tex`: the UI module and the UI workflow now mention the three-section layout (Entry 22) and the theme
+  switch. After the student asked "okay we can add thic change in documentation", the usability requirement was
+  updated to include the theme, and the browser-check count was changed from 37 to 41 steps in the UI testing text
+  and the conclusion.
+
+**Verification by Claude (actual results):**
+
+- The scratch headless-Edge script gained 4 theme checks:
+  - the page starts light with the moon icon;
+  - the moon switches to dark (body `rgb(11, 17, 32)`), shows the sun, saves `dark` and relabels the button;
+  - dark is kept after reloading the page;
+  - the sun switches back to light and saves `light`.
+
+  Results: **37/37 + 4/4 passed**. With the OS emulated in dark mode and nothing saved, the page stays light
+  (`rgb(245, 247, 251)`).
+- Dark screenshots were inspected (desktop, mobile, delete dialog): the text is readable, warning colours stand out,
+  and the form controls and calendar icon are dark.
+- `npm test`: 105/105 pass. The `main.tex` structure check passes.
+
 **Commit:** pending.

@@ -1,5 +1,6 @@
 /* ---------- Design tokens: neutral blue-grey ("slate") palette with a calm blue accent ---------- */
-/* Amber and rose are used only for budget warnings, so they stand out. Light theme only. */
+/* Amber and rose are used only for budget warnings, so they stand out. Light is the default theme;
+   the dark theme is chosen with the switch in the header (data-theme="dark" on <html>). */
 :root {
   color-scheme: light;
 
@@ -13,10 +14,12 @@
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
   --accent-soft: #eaf1fe;
+  --accent-text: #2563eb;
   --on-accent: #ffffff;
   --focus: #2563eb;
   --track: #e9eef5;
   --toast-bg: #0f172a;
+  --toast-text: #ffffff;
 
   --ok: #3b82f6;
   --warning: #b45309;
@@ -31,6 +34,38 @@
   --shadow: 0 1px 2px rgb(15 23 42 / 4%), 0 1px 3px rgb(15 23 42 / 6%);
   --shadow-lg: 0 12px 32px rgb(15 23 42 / 16%);
   --font: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0b1120;
+  --surface: #131c2e;
+  --surface-muted: #1b2639;
+  --border: #253149;
+  --border-strong: #35435c;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --accent: #2563eb;
+  --accent-hover: #3b82f6;
+  --accent-soft: #172a4f;
+  --accent-text: #93c5fd;
+  --on-accent: #ffffff;
+  --focus: #60a5fa;
+  --track: #223049;
+  --toast-bg: #e2e8f0;
+  --toast-text: #0f172a;
+
+  --ok: #60a5fa;
+  --warning: #fbbf24;
+  --warning-soft: #3d2a07;
+  --over: #fb7185;
+  --over-soft: #3f0d1c;
+  --danger-bg: #e11d48;
+  --danger-hover: #be123c;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px rgb(0 0 0 / 25%);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 50%);
 }
 
 /* ---------- Base ---------- */
@@ -162,6 +197,36 @@ button, input, select {
   font-weight: 450;
   color: var(--text-muted);
   letter-spacing: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Theme switch: the moon switches to dark, the sun switches back to light. */
+.theme-toggle {
+  width: 2.7rem;
+  height: 2.7rem;
+  padding: 0;
+  border-color: var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.theme-toggle .icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.theme-toggle .icon-sun,
+:root[data-theme="dark"] .theme-toggle .icon-moon {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .icon-sun {
+  display: block;
 }
 
 .month-picker {
@@ -320,7 +385,7 @@ main.is-loading {
   height: 2rem;
   border-radius: 9px;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .card-value {
@@ -819,7 +884,7 @@ main.is-loading {
   padding: 0.7rem 1.1rem;
   border-radius: 12px;
   background: var(--toast-bg);
-  color: #ffffff;
+  color: var(--toast-text);
   font-size: 0.875rem;
   font-weight: 550;
   box-shadow: var(--shadow-lg);

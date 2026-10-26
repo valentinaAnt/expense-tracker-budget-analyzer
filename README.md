@@ -11,6 +11,7 @@ vanilla JavaScript** as an AI-Assisted Development exam project (with Claude Cod
 - Dashboard per month: total spent, total budget, budget left, categories over budget, a spending-vs-budget chart and
   the top 3 categories.
 - Validation in the browser and on the server; data stored in SQLite and kept after restarts.
+- Light and dark theme: the moon/sun button in the header switches it, and the browser remembers the choice.
 
 ## Getting started
 

@@ -138,7 +138,8 @@ Claude Code as the AI coding assistant.
 \begin{itemize}
     \item \textbf{Usability:} responsive layout, labelled fields,
     keyboard-accessible controls, and messages announced to screen
-    readers; error messages disappear as soon as a field is corrected.
+    readers; error messages disappear as soon as a field is corrected; a
+    light and a dark theme, chosen by the user and remembered.
     \item \textbf{Reliability:} money is stored as integer cents, so
     totals are exact; invalid data is rejected with structured JSON
     errors, and unexpected errors never crash the server.
@@ -212,13 +213,14 @@ Node.js 24.22.1 with npm 11.19.1.
 
 \subsection{User Interface Module}
 
-\texttt{public/index.html} is one page with summary cards, a category
-bar chart, a top-categories list, the expense form (with
-\emph{Clear}/\emph{Cancel}), a categories panel, the budget list, and the
-expense table for the selected month. \texttt{api.js} is the only module
-that calls \texttt{fetch}; \texttt{app.js} renders data, handles events,
-and formats amounts in euros. A \texttt{<dialog>} confirms deletions. The
-blue-grey design uses colour only for budget warnings.
+\texttt{public/index.html} is one page in three sections: an overview
+(summary cards, category bar chart, top categories), expenses (the form
+with \emph{Clear}/\emph{Cancel} next to the expense table), and settings
+(budgets and categories). \texttt{api.js} is the only module that calls
+\texttt{fetch}; \texttt{app.js} renders data, handles events, and formats
+amounts in euros. A \texttt{<dialog>} confirms deletions. The blue-grey
+design uses colour only for budget warnings and has a light and a dark
+theme, switched with a moon/sun button.
 
 \subsection{Expense Management Module}
 
@@ -322,13 +324,18 @@ then generated the HTML, CSS, and JavaScript, rendered the page in
 headless Microsoft Edge, and inspected screenshots at desktop and mobile
 widths, which revealed a text bug (``1 categories''). At the student's
 request the interface was later restyled after common dashboard
-templates; the student rejected the first version's dark mode and asked
-for the blue-grey palette that became the final design.
+templates; the student rejected the first version's automatic dark mode
+and asked for the blue-grey palette that became the final design. Later
+the student found the page poorly arranged; Claude proposed two layouts
+as mock-ups and the student chose the three-section version. The student
+then asked for a manual light/dark switch with a moon and a sun, so light
+stays the default and the browser remembers the choice.
 
 \textbf{Testing Strategy.} A temporary script (not in the repository)
 drove headless Edge through the real interface: validation, adding,
-editing, deleting, budgets, categories, month navigation, and a simulated
-network failure. Its final 37 steps all passed, and a description
+editing, deleting, budgets, categories, month navigation, a simulated
+network failure, and the theme switch (including after a page reload).
+Its final 41 steps all passed, and a description
 containing \texttt{<b>bold?</b>} was shown as plain text, confirming the
 XSS protection. The student's own use found two problems the script had
 missed: an error that never disappeared after saving an empty budget,
@@ -582,7 +589,7 @@ The completed system meets all functional requirements: a user can
 record, edit, and delete expenses, manage categories, set monthly
 budgets, and see accurate totals, budget usage, and top categories on a
 responsive dashboard, with all data stored in SQLite. 105 automated
-tests, a 37-step browser check, the student's own use of the interface,
+tests, a 41-step browser check, the student's own use of the interface,
 and a set-up from a clean copy of the repository confirmed that it
 works. Its main limitations are the deliberate scope boundaries (one
 user, one currency, no income) and browser tests that are not yet part
