@@ -1292,3 +1292,47 @@ to Overview. The whole script passed (**64/64 + 4/4 + 6/6**); the only browser l
 duplicate-category step. `npm test`: 124/124 pass. Claude also looked at the Overview screenshot.
 
 **Commit:** pending.
+
+---
+
+## Entry 34 — Screenshots retaken after the tabs (2026-10-27)
+
+**Prompt used:**
+
+```
+i have added new images. fix my docs
+```
+
+**Evidence (taken by the student):** new files in `report/`. They replace `main-light-1.png`, `main-light-2.png`,
+`main-dark-1.png` and `main-dark-2.png`, which the student deleted. `tests.png` was retaken as well.
+
+- `light-1.png`: the Overview tab, light theme, October 2026. Spent €32.00 (2 expenses, €20.00 without a budget),
+  monthly budget €330.00 (2 of 9 categories), budget left €318.00 (not counting €20.00 without a budget), 0
+  categories over budget. Utilities is listed under "Spending without a budget".
+- `dark-1.png`: the same Overview in the dark theme.
+- `light-2.png`: the Expenses tab with two expenses: 26 Oct 2026 "new" (Utilities, €20.00) and 22 Oct 2026 "Lunch"
+  (Food, €12.00).
+- `light-3.png`: the Budgets & categories tab: budgets for Food (€300.00) and Housing (€30.00), nine categories.
+- `npm-start.png`: `npm start` output: "Expense Tracker running at http://127.0.0.1:3000" and the database path. The
+  student added it as `npm start.png`; Claude renamed it because a space in a file name can break `\includegraphics`.
+- `tests.png`: the end of `npm test`: tests 124, suites 26, pass 124, fail 0.
+
+Claude opened each image before writing its caption.
+
+**Change:**
+
+- `report/main.tex`:
+  - the User Interface Module paragraph now describes the three tabs (it still said "one page in three sections"; see
+    the note in Entry 31) and the separate listing of spending without a budget (Entry 33);
+  - Working System Evidence has three screenshots: 1 starting the server (`npm-start.png`), 2 the three tabs as a
+    2×2 grid (Overview light and dark, Expenses, Budgets & categories) with the figures shown in the overall caption,
+    3 the test results (caption unchanged, it still matches the image).
+- `README.md`: the Overleaf instructions list the six screenshot files; the feature list mentions the tabs and the
+  separate listing of spending without a budget.
+
+**Verification:** a scratch structure check of `main.tex` passed: braces balanced (345/345), environments matched,
+all six `\includegraphics` files exist in `report/`, 0 TODOs, no references to the old file names left. LaTeX is not
+installed locally, so the student compiles the report in Overleaf and checks that it still fits the page limit (the
+new server screenshot adds a figure).
+
+**Commit:** pending.

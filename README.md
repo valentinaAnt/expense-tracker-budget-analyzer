@@ -11,7 +11,9 @@ vanilla JavaScript** as an AI-Assisted Development exam project (with Claude Cod
   them to a category you choose.
 - Set one recurring monthly budget per category.
 - Dashboard per month: total spent, total budget, budget left, categories over budget, a spending-vs-budget chart, the
-  top 3 categories, and a chart of the last 6 months (click a month to open it).
+  top 3 categories, and a chart of the last 6 months (click a month to open it). Spending in categories without a
+  budget is listed separately, with a **Set a budget** link.
+- Three tabs: Overview, Expenses, and Budgets & categories.
 - On phones, the expense list is shown as cards.
 - Validation in the browser and on the server; data stored in SQLite and kept after restarts.
 - Light and dark theme: the moon/sun button in the header switches it, and the browser remembers the choice.
@@ -101,7 +103,7 @@ report/     main.tex (LaTeX project report)
 - [`docs/development-log.md`](docs/development-log.md) — the actual prompts, changes, test results and commits.
 - [`report/main.tex`](report/main.tex) — the project report as a LaTeX file.
 
-**Compiling the report in Overleaf:** New Project → Upload Project → upload `report/main.tex` together with the five
-screenshots in `report/` (`main-light-1.png`, `main-light-2.png`, `main-dark-1.png`, `main-dark-2.png`, `tests.png`),
+**Compiling the report in Overleaf:** New Project → Upload Project → upload `report/main.tex` together with the six
+screenshots in `report/` (`npm-start.png`, `light-1.png`, `light-2.png`, `light-3.png`, `dark-1.png`, `tests.png`),
 check that the compiler is **pdfLaTeX**, then click **Recompile** and **Download PDF**.
 Locally (with MiKTeX or TeX Live): run `pdflatex main.tex` twice in the `report` folder.
